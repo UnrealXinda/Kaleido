@@ -7,8 +7,9 @@ public class Kaleido : ModuleRules
 	public Kaleido(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicIncludePaths.AddRange(
+        OptimizeCode = CodeOptimization.Never;
+
+        PublicIncludePaths.AddRange(
 			new string[] {
 				// ... add public include paths required here ...
 			}
@@ -25,19 +26,25 @@ public class Kaleido : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Core",
+                "Core",
+                "CoreUObject",
+                "Engine",
+                "RHI",
+                "RenderCore",
 				// ... add other public dependencies that you statically link with here ...
 			}
-			);
+            );
 			
 		
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
+                "CoreUObject",
+                "Engine",
+                "Slate",
+                "SlateCore",
+                "UnrealEd",
+                "Projects",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
