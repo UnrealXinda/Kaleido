@@ -3,7 +3,7 @@
 	"Version": 1,
 	"VersionName": "1.0",
 	"FriendlyName": "Kaleido",
-	"Description": "A plugin for high performance instanced mesh.",
+	"Description": "A plugin for manipulation of high performance instanced mesh with compute shader.",
 	"Category": "Other",
 	"CreatedBy": "UnrealXinda",
 	"CreatedByURL": "",

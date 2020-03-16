@@ -1,0 +1,66 @@
+#include "/Engine/Private/Common.ush"
+#include "../Common.ush"
+
+RWStructuredBuffer<float4x4> InstanceTransformBuffer;
+StructuredBuffer<float4x4> InitialTransformBuffer;
+
+[numthreads(128, 1, 1)]
+void InclusiveRotationCS(uint3 ThreadId : SV_DispatchThreadID)
+{
+	const float4x4 InfluencerTransform = InclusiveRotationShaderUniform.InfluencerTransform;
+	const float4x4 ModelTransform      = InclusiveRotationShaderUniform.ModelTransform;
+	const float3   TranslationInertia  = InclusiveRotationShaderUniform.TranslationInertia;
+	const float3   RotationInertia     = InclusiveRotationShaderUniform.RotationInertia;
+	const float3   ScaleInertia        = InclusiveRotationShaderUniform.ScaleInertia;
+	
+	const float    InfluencerRadius    = InclusiveRotationShaderUniform.InfluencerRadius;
+    
+	const uint Index = ThreadId.x;
+	uint Size, Stride;
+	InstanceTransformBuffer.GetDimensions(Size, Stride);
+    
+	if (Index < Size)
+	{
+		float4x4 InitialLocalTransform  = transpose(InitialTransformBuffer[Index]);
+		float4x4 InstanceLocalTransform = transpose(InstanceTransformBuffer[Index]);
+		
+		float3 InitialT, InitialS;
+		float3 InstanceT, InstanceS;
+		float3 InfluencerT, InfluencerS;
+		float3 ModelT, ModelS;
+		
+		float4 InitialR;
+		float4 InstanceR;
+		float4 InfluencerR;
+		float4 ModelR;
+        
+		decompose(InitialLocalTransform, InitialT, InitialR, InitialS);
+		decompose(InstanceLocalTransform, InstanceT, InstanceR, InstanceS);
+		decompose(InfluencerTransform, InfluencerT, InfluencerR, InfluencerS);
+		decompose(ModelTransform, ModelT, ModelR, ModelS);
+		
+		float4 InstanceWorldT = mul(float4(InstanceT, 1), ModelTransform);
+		InstanceWorldT.xyz *= rcp(InstanceWorldT.w);
+		
+		float4 InstanceWorldR = q_mul(ModelR, InstanceR);
+		
+		float Distance = length(InfluencerT - InstanceWorldT.xyz);
+		float4 TargetRotation;
+		
+		if (Distance < InfluencerRadius)
+		{
+			float4 WorldLookAt = q_look_at(InfluencerT - InstanceWorldT.xyz, up_from_quaternion(InstanceWorldR));
+			float4 LocalLookAt = q_mul(q_inverse(InstanceR), WorldLookAt);
+			TargetRotation = q_slerp(LocalLookAt, InitialR, Distance / InfluencerRadius);
+		}
+		else
+		{
+			TargetRotation = InitialR;
+		}		
+		
+		// TODO: figure out how to apply slerp alpha from Eular angles to quaternions
+		InstanceR = q_slerp(InstanceR, TargetRotation, RotationInertia.x);
+		
+		InstanceTransformBuffer[Index] = compose(InstanceT, InstanceR, InstanceS);
+	}
+}

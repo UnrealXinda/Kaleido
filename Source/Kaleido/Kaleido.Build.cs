@@ -26,10 +26,10 @@ public class Kaleido : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-                "Core",
-                "CoreUObject",
-                "Engine",
+				"Core",
+				"CoreUObject",
                 "RHI",
+				"Engine",
                 "RenderCore",
 				// ... add other public dependencies that you statically link with here ...
 			}
@@ -39,12 +39,10 @@ public class Kaleido : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
-                "CoreUObject",
-                "Engine",
-                "Slate",
-                "SlateCore",
-                "UnrealEd",
-                "Projects",
+				"CoreUObject",
+				"Engine",
+				"UnrealEd",
+				"Projects",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

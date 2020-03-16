@@ -16,3 +16,8 @@ EInfluencerShape AKaleidoSphereInfluencer::GetInfluencerShape() const
 {
 	return EInfluencerShape::Sphere;
 }
+
+float AKaleidoSphereInfluencer::GetInfluencerRadius() const
+{
+	return SphereComponent->GetScaledSphereRadius();
+}

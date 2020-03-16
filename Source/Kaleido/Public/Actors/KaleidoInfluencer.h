@@ -27,6 +27,17 @@ UCLASS()
 class KALEIDO_API AKaleidoInfluencer : public AActor
 {
 	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Influencer")
+	FName TranslationShaderName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Influencer")
+	FName RotationShaderName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Influencer")
+	FName ScaleShaderName;
 	
 public:	
 
@@ -34,8 +45,7 @@ public:
 
 	const TArray<EInfluencerType>& GetInfluencerTypes() const;
 
-	virtual EInfluencerShape GetInfluencerShape() const;
-	
+	virtual EInfluencerShape GetInfluencerShape() const;	
 
 protected:
 

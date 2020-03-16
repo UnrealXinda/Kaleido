@@ -1,0 +1,63 @@
+#include "/Engine/Private/Common.ush"
+#include "../Common.ush"
+
+RWStructuredBuffer<float4x4> InstanceTransformBuffer;
+StructuredBuffer<float4x4> InitialTransformBuffer;
+
+[numthreads(128, 1, 1)]
+void InclusiveScaleCS(uint3 ThreadId : SV_DispatchThreadID)
+{
+	const float4x4 InfluencerTransform = InclusiveScaleShaderUniform.InfluencerTransform;
+	const float4x4 ModelTransform      = InclusiveScaleShaderUniform.ModelTransform;
+	const float3   TranslationInertia  = InclusiveScaleShaderUniform.TranslationInertia;
+	const float3   RotationInertia     = InclusiveScaleShaderUniform.RotationInertia;
+	const float3   ScaleInertia        = InclusiveScaleShaderUniform.ScaleInertia;
+	
+	const float3   MinScale            = InclusiveScaleShaderUniform.MinScale;
+	const float3   MaxScale            = InclusiveScaleShaderUniform.MaxScale;
+	const float    InfluencerRadius    = InclusiveScaleShaderUniform.InfluencerRadius;
+	const int      Direction           = InclusiveScaleShaderUniform.Direction;
+    
+	const uint Index = ThreadId.x;
+	uint Size, Stride;
+	InstanceTransformBuffer.GetDimensions(Size, Stride);
+    
+	if (Index < Size)
+	{
+		float4x4 InitialLocalTransform  = transpose(InitialTransformBuffer[Index]);
+		float4x4 InstanceLocalTransform = transpose(InstanceTransformBuffer[Index]);
+		
+		float3 InitialT, InitialS;
+		float3 InstanceT, InstanceS;
+		float3 InfluencerT, InfluencerS;
+		
+		float4 InitialR;
+		float4 InstanceR;
+		float4 InfluencerR;
+        
+		decompose(InitialLocalTransform, InitialT, InitialR, InitialS);
+		decompose(InstanceLocalTransform, InstanceT, InstanceR, InstanceS);
+		decompose(InfluencerTransform, InfluencerT, InfluencerR, InfluencerS);
+		
+		float4 InstanceWorldT = mul(float4(InstanceT, 1), ModelTransform);
+		InstanceWorldT.xyz *= rcp(InstanceWorldT.w);
+		
+		float Distance = length(InfluencerT - InstanceWorldT.xyz);
+		float3 TargetScale;
+		
+		if (Distance < InfluencerRadius)
+		{
+			float3 LerpMinScale = lerp(MinScale, MaxScale, Direction);
+			float3 LerpMaxScale = lerp(MaxScale, MinScale, Direction);
+			TargetScale = lerp(LerpMinScale, LerpMaxScale, Distance / InfluencerRadius);
+		}
+		else
+		{
+			TargetScale = InitialS;
+		}		
+		
+		InstanceS = lerp(InstanceS, TargetScale, ScaleInertia);
+		
+		InstanceTransformBuffer[Index] = compose(InstanceT, InstanceR, InstanceS);
+	}
+}

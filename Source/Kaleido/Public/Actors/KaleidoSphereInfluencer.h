@@ -20,6 +20,8 @@ public:
 
 	virtual EInfluencerShape GetInfluencerShape() const override;
 
+	float GetInfluencerRadius() const;
+
 protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
