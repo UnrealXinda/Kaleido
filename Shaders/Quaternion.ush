@@ -82,17 +82,19 @@ float4 q_conj(float4 q)
 float4 q_inverse(float4 q)
 {
     float4 conj = q_conj(q);
-    return conj / (q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+	return conj / dot(q, q);
 }
 
 float4 q_diff(float4 q1, float4 q2)
 {
-    return q2 * q_inverse(q1);
+	return q_mul(q2, q_inverse(q1));
 }
 
+// http://answers.unity3d.com/questions/467614/what-is-the-source-code-of-quaternionlookrotation.html
 float4 q_look_at(float3 forward, float3 up)
 {
-    float3 right = normalize(cross(forward, up));
+	forward = normalize(forward);
+    float3 right = normalize(cross(up, forward));
     up = normalize(cross(forward, right));
 
     float m00 = right.x;
@@ -151,58 +153,80 @@ float4 q_look_at(float3 forward, float3 up)
 
 float4 q_slerp(in float4 a, in float4 b, float t)
 {
-    // if either input is zero, return the other.
-    if (length(a) == 0.0)
-    {
-        if (length(b) == 0.0)
-        {
-            return QUATERNION_IDENTITY;
-        }
-        return b;
-    }
-    else if (length(b) == 0.0)
-    {
-        return a;
-    }
+	// v0 and v1 should be unit length or else
+    // something broken will happen.
 
-    float cosHalfAngle = a.w * b.w + dot(a.xyz, b.xyz);
+    // Compute the cosine of the angle between the two vectors.
+	float dot_product = dot(a, b);
 
-    if (cosHalfAngle >= 1.0 || cosHalfAngle <= -1.0)
-    {
-        return a;
-    }
-    else if (cosHalfAngle < 0.0)
-    {
-        b.xyz = -b.xyz;
-        b.w = -b.w;
-        cosHalfAngle = -cosHalfAngle;
-    }
+	const float DOT_THRESHOLD = 0.9995;
+	if (dot_product > DOT_THRESHOLD)
+	{
+		return normalize(a + t * (b - a));
+	}
 
-    float blendA;
-    float blendB;
-    if (cosHalfAngle < 0.99)
-    {
-        // do proper slerp for big angles
-        float halfAngle = acos(cosHalfAngle);
-        float sinHalfAngle = sin(halfAngle);
-        float oneOverSinHalfAngle = 1.0 / sinHalfAngle;
-        blendA = sin(halfAngle * (1.0 - t)) * oneOverSinHalfAngle;
-        blendB = sin(halfAngle * t) * oneOverSinHalfAngle;
-    }
-    else
-    {
-        // do lerp if angle is really small.
-        blendA = 1.0 - t;
-        blendB = t;
-    }
+	dot_product = clamp(dot_product, -1, 1); // Robustness: Stay within domain of acos()
+	float theta_0 = acos(dot_product); // theta_0 = angle between input vectors
+	float theta = theta_0 * t; // theta = angle between v0 and result 
 
-    float4 result = float4(blendA * a.xyz + blendB * b.xyz, blendA * a.w + blendB * b.w);
-    if (length(result) > 0.0)
-    {
-        return normalize(result);
-    }
-    return QUATERNION_IDENTITY;
+	b = normalize(b - a * dot_product);
+	return a * cos(theta) + b * sin(theta);
 }
+
+//float4 q_slerp(in float4 a, in float4 b, float t)
+//{
+//    // if either input is zero, return the other.
+//    if (length(a) == 0.0)
+//    {
+//        if (length(b) == 0.0)
+//        {
+//            return QUATERNION_IDENTITY;
+//        }
+//        return b;
+//    }
+//    else if (length(b) == 0.0)
+//    {
+//        return a;
+//    }
+
+//    float cosHalfAngle = a.w * b.w + dot(a.xyz, b.xyz);
+
+//    if (cosHalfAngle >= 1.0 || cosHalfAngle <= -1.0)
+//    {
+//        return a;
+//    }
+//    else if (cosHalfAngle < 0.0)
+//    {
+//        b.xyz = -b.xyz;
+//        b.w = -b.w;
+//        cosHalfAngle = -cosHalfAngle;
+//    }
+
+//    float blendA;
+//    float blendB;
+//    if (cosHalfAngle < 0.99)
+//    {
+//        // do proper slerp for big angles
+//        float halfAngle = acos(cosHalfAngle);
+//        float sinHalfAngle = sin(halfAngle);
+//        float oneOverSinHalfAngle = 1.0 / sinHalfAngle;
+//        blendA = sin(halfAngle * (1.0 - t)) * oneOverSinHalfAngle;
+//        blendB = sin(halfAngle * t) * oneOverSinHalfAngle;
+//    }
+//    else
+//    {
+//        // do lerp if angle is really small.
+//        blendA = 1.0 - t;
+//        blendB = t;
+//    }
+
+//    float4 result = float4(blendA * a.xyz + blendB * b.xyz, blendA * a.w + blendB * b.w);
+//    if (length(result) > 0.0)
+//    {
+//        return normalize(result);
+//    }
+//    return QUATERNION_IDENTITY;
+//}
 
 float4x4 quaternion_to_matrix(float4 quat)
 {

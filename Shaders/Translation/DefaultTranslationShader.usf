@@ -1,0 +1,38 @@
+#include "/Engine/Private/Common.ush"
+#include "../Common.ush"
+
+RWStructuredBuffer<float4x4> InstanceTransformBuffer;
+StructuredBuffer<float4x4> InitialTransformBuffer;
+
+[numthreads(128, 1, 1)]
+void DefaultTranslationCS(uint3 ThreadId : SV_DispatchThreadID)
+{
+	const float4x4 InfluencerTransform = DefaultTranslationShaderUniform.InfluencerTransform;
+	const float4x4 ModelTransform      = DefaultTranslationShaderUniform.ModelTransform;
+	const float3   TranslationInertia  = DefaultTranslationShaderUniform.TranslationInertia;
+	const float3   RotationInertia     = DefaultTranslationShaderUniform.RotationInertia;
+	const float3   ScaleInertia        = DefaultTranslationShaderUniform.ScaleInertia;
+    
+	const uint Index = ThreadId.x;
+	uint Size, Stride;
+	InstanceTransformBuffer.GetDimensions(Size, Stride);
+    
+	if (Index < Size)
+	{
+		float4x4 InitialLocalTransform  = transpose(InitialTransformBuffer[Index]);
+		float4x4 InstanceLocalTransform = transpose(InstanceTransformBuffer[Index]);
+		
+		float3 InitialT, InitialS;
+		float3 InstanceT, InstanceS;
+		
+		float4 InitialR;
+		float4 InstanceR;
+        
+		decompose(InitialLocalTransform, InitialT, InitialR, InitialS);
+		decompose(InstanceLocalTransform, InstanceT, InstanceR, InstanceS);
+		
+		InstanceS = lerp(InstanceS, InitialS, ScaleInertia);
+		
+		InstanceTransformBuffer[Index] = compose(InstanceT, InstanceR, InstanceS);
+	}
+}

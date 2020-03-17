@@ -12,6 +12,8 @@
 #include "Shaders/Scale/DefaultScaleShader.h"
 #include "Shaders/Rotation/InclusiveRotationShader.h"
 #include "Shaders/Rotation/DefaultRotationShader.h"
+#include "Shaders/Translation/InclusiveTranslationShader.h"
+#include "Shaders/Translation/DefaultTranslationShader.h"
 
 UKaleidoInstancedMeshComponent::UKaleidoInstancedMeshComponent(const FObjectInitializer& Initializer) :
 	Super(Initializer)
@@ -149,7 +151,94 @@ void UKaleidoInstancedMeshComponent::ReleaseComputeResources()
 
 void UKaleidoInstancedMeshComponent::ProcessTranslationInfluencers(const TArray<const AKaleidoInfluencer*>& TranslationInfluencers)
 {
+		FMatrix ComponentTransform = GetComponentTransform().ToMatrixWithScale();
 
+	for (const AKaleidoInfluencer* Influencer : TranslationInfluencers)
+	{
+		if (const AKaleidoSphereInfluencer* SphereInfluencer = Cast<AKaleidoSphereInfluencer>(Influencer))
+		{
+			FMatrix InfluencerTransform = SphereInfluencer->GetActorTransform().ToMatrixWithScale();
+			float InfluencerRadius = SphereInfluencer->GetInfluencerRadius();
+
+			ENQUEUE_RENDER_COMMAND(InfluencerComputeCommand)
+			(
+				[InfluencerTransform, ComponentTransform, InfluencerRadius, this](FRHICommandListImmediate& RHICmdList)
+				{
+					check(IsInRenderingThread());
+
+					TShaderMapRef<FInclusiveTranslationShader> KaleidoShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+					RHICmdList.SetComputeShader(KaleidoShader->GetComputeShader());
+
+					// Bind shader buffers
+					KaleidoShader->BindTransformBuffers(RHICmdList, InstanceTransformBufferUAV, InitialTransformBufferSRV);
+
+					// Bind shader uniform
+					FInclusiveTranslationShader::FParameters UniformParam;
+					UniformParam.ModelTransform      = ComponentTransform;
+					UniformParam.InfluencerTransform = InfluencerTransform;
+					UniformParam.TranslationInertia  = TranslationInertia;
+					UniformParam.RotationInertia     = RotationInertia;
+					UniformParam.ScaleInertia        = ScaleInertia;
+
+					UniformParam.MinTranslation      = 0.0f;    // TODO: these should come from influencer
+					UniformParam.MaxTranslation      = 100.0f;  // TODO: these should come from influencer
+					UniformParam.InfluencerRadius    = InfluencerRadius;
+					KaleidoShader->SetShaderParameters(RHICmdList, UniformParam);
+
+					// Dispatch shader
+					const int ThreadGroupCountX = FMath::CeilToInt(GetInstanceCount() / 128.f);
+					const int ThreadGroupCountY = 1;
+					const int ThreadGroupCountZ = 1;
+					DispatchComputeShader(RHICmdList, *KaleidoShader, ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+
+					// Unbind shader buffers
+					KaleidoShader->UnbindTransformBuffers(RHICmdList);
+
+					// TODO: not to do this on every compute pass, only on the last pass
+					// Read back the transform buffer.
+					CopyBackInstanceTransformBuffer_RenderThread();
+				}
+			);
+		}
+	}
+
+	if (TranslationInfluencers.Num() == 0)
+	{
+		ENQUEUE_RENDER_COMMAND(DefaultTranslationComputeCommand)
+		(
+			[ComponentTransform, this](FRHICommandListImmediate& RHICmdList)
+			{
+				check(IsInRenderingThread());
+
+				TShaderMapRef<FDefaultTranslationShader> KaleidoShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+				RHICmdList.SetComputeShader(KaleidoShader->GetComputeShader());
+
+				// Bind shader buffers
+				KaleidoShader->BindTransformBuffers(RHICmdList, InstanceTransformBufferUAV, InitialTransformBufferSRV);
+
+				// Bind shader uniform
+				FDefaultTranslationShader::FParameters UniformParam;
+				UniformParam.ModelTransform      = ComponentTransform;
+				UniformParam.TranslationInertia  = TranslationInertia;
+				UniformParam.RotationInertia     = RotationInertia;
+				UniformParam.ScaleInertia        = ScaleInertia;
+				KaleidoShader->SetShaderParameters(RHICmdList, UniformParam);
+
+				// Dispatch shader
+				const int ThreadGroupCountX = FMath::CeilToInt(GetInstanceCount() / 128.f);
+				const int ThreadGroupCountY = 1;
+				const int ThreadGroupCountZ = 1;
+				DispatchComputeShader(RHICmdList, *KaleidoShader, ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+
+				// Unbind shader buffers
+				KaleidoShader->UnbindTransformBuffers(RHICmdList);
+
+				// TODO: not to do this on every compute pass, only on the last pass
+				// Read back the transform buffer.
+				CopyBackInstanceTransformBuffer_RenderThread();
+			}
+		);
+	}
 }
 
 void UKaleidoInstancedMeshComponent::ProcessRotationInfluencers(const TArray<const AKaleidoInfluencer*>& RotationInfluencers)

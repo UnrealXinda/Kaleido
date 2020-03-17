@@ -50,7 +50,7 @@ void InclusiveRotationCS(uint3 ThreadId : SV_DispatchThreadID)
 		if (Distance < InfluencerRadius)
 		{
 			float4 WorldLookAt = q_look_at(InfluencerT - InstanceWorldT.xyz, up_from_quaternion(InstanceWorldR));
-			float4 LocalLookAt = q_mul(q_inverse(InstanceR), WorldLookAt);
+			float4 LocalLookAt = q_diff(WorldLookAt, InstanceR);
 			TargetRotation = q_slerp(LocalLookAt, InitialR, Distance / InfluencerRadius);
 		}
 		else
