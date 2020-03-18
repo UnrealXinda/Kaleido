@@ -46,10 +46,14 @@ protected:
 	void InitComputeResources();
 	void ReleaseComputeResources();
 
-	void ProcessTranslationInfluencers(const TArray<const AKaleidoInfluencer*>& TranslationInfluencers);
-	void ProcessRotationInfluencers(const TArray<const AKaleidoInfluencer*>& RotationInfluencers);
-	void ProcessScaleInfluencers(const TArray<const AKaleidoInfluencer*>& ScaleInfluencers);
+	void TickTransforms();
+
+	void ProcessTranslationInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const TArray<TWeakObjectPtr<AKaleidoInfluencer>>& Influencers);
+	void ProcessRotationInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const TArray<TWeakObjectPtr<AKaleidoInfluencer>>& Influencers);
+	void ProcessScaleInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const TArray<TWeakObjectPtr<AKaleidoInfluencer>>& Influencers);
 
 	void CopyBackInstanceTransformBuffer_RenderThread();
 
+	template<class ShaderType, class ShaderParamType>
+	void ComputeTransforms(FRHICommandListImmediate& RHICmdList, ShaderParamType Param);
 };
