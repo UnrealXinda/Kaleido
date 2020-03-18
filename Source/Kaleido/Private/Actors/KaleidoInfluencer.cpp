@@ -2,20 +2,17 @@
 
 
 #include "Actors/KaleidoInfluencer.h"
+#include "Components/SphereComponent.h"
 
 AKaleidoInfluencer::AKaleidoInfluencer(const FObjectInitializer& Initializer) :
 	Super(Initializer)
 {
-
+	SphereComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComponent"));
+	SphereComponent->SetCollisionProfileName(TEXT("Influencer"));
+	RootComponent = SphereComponent;
 }
 
-const TArray<EInfluencerType>& AKaleidoInfluencer::GetInfluencerTypes() const
+float AKaleidoInfluencer::GetInfluencerRadius() const
 {
-	return InfluencerTypes;
+	return SphereComponent->GetScaledSphereRadius();
 }
-
-EInfluencerShape AKaleidoInfluencer::GetInfluencerShape() const
-{
-	return EInfluencerShape::Default;
-}
-

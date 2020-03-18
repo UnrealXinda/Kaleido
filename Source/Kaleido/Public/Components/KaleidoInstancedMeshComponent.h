@@ -33,6 +33,16 @@ public:
 	virtual void BeginDestroy() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	FUnorderedAccessViewRHIRef GetInstanceTransformBufferUAV() const
+	{
+		return InstanceTransformBufferUAV;
+	}
+
+	FShaderResourceViewRHIRef GetInitialTransformBufferSRV() const
+	{
+		return InitialTransformBufferSRV;
+	}
+
 protected:
 
 	FStructuredBufferRHIRef    InstanceTransformBuffer;
@@ -48,12 +58,6 @@ protected:
 
 	void TickTransforms();
 
-	void ProcessTranslationInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const TArray<TWeakObjectPtr<AKaleidoInfluencer>>& Influencers);
-	void ProcessRotationInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const TArray<TWeakObjectPtr<AKaleidoInfluencer>>& Influencers);
-	void ProcessScaleInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const TArray<TWeakObjectPtr<AKaleidoInfluencer>>& Influencers);
-
+	void ProcessInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const TArray<TWeakObjectPtr<AKaleidoInfluencer>>& Influencers);
 	void CopyBackInstanceTransformBuffer_RenderThread();
-
-	template<class ShaderType, class ShaderParamType>
-	void ComputeTransforms(FRHICommandListImmediate& RHICmdList, ShaderParamType Param);
 };

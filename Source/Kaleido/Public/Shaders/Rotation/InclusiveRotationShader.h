@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Shaders/KaleidoShaderTemplates.h"
 #include "Shaders/KaleidoComputeShader.h"
 
 BEGIN_KALEIDO_SHADER_PARAMETER_STRUCT(FInclusiveRotationShaderParameters, )
@@ -23,3 +24,19 @@ public:
 };
 
 IMPLEMENT_SHADER_TYPE(, FInclusiveRotationShader, TEXT("/Plugin/Kaleido/Rotation/InclusiveRotationShader.usf"), TEXT("InclusiveRotationCS"), SF_Compute);
+
+template<>
+FInclusiveRotationShader::FParameters CreateKaleidoShaderParameter<FInclusiveRotationShader::FParameters>(const UKaleidoInstancedMeshComponent& Kaleido, const AKaleidoInfluencer* Influencer)
+{
+	// TODO: These are thread unsafe	 
+	FInclusiveRotationShader::FParameters UniformParam;
+	UniformParam.ModelTransform      = Kaleido.GetComponentTransform().ToMatrixWithScale();
+	UniformParam.InfluencerTransform = Influencer->GetActorTransform().ToMatrixWithScale();
+	UniformParam.TranslationInertia  = Kaleido.TranslationInertia;
+	UniformParam.RotationInertia     = Kaleido.RotationInertia;
+	UniformParam.ScaleInertia        = Kaleido.ScaleInertia;
+
+	UniformParam.InfluencerRadius    = Influencer->GetInfluencerRadius();
+
+	return UniformParam;
+}

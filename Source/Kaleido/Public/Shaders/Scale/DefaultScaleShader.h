@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Shaders/KaleidoShaderTemplates.h"
 #include "Shaders/KaleidoComputeShader.h"
 
 BEGIN_KALEIDO_SHADER_PARAMETER_STRUCT(FDefaultScaleShaderParameters, )
@@ -22,3 +23,16 @@ public:
 };
 
 IMPLEMENT_SHADER_TYPE(, FDefaultScaleShader, TEXT("/Plugin/Kaleido/Scale/DefaultScaleShader.usf"), TEXT("DefaultScaleCS"), SF_Compute);
+
+template<>
+FDefaultScaleShader::FParameters CreateKaleidoShaderParameter<FDefaultScaleShader::FParameters>(const UKaleidoInstancedMeshComponent& Kaleido, const AKaleidoInfluencer* Influencer)
+{
+	// TODO: These are thread unsafe	 
+	FDefaultScaleShader::FParameters UniformParam;
+	UniformParam.ModelTransform      = Kaleido.GetComponentTransform().ToMatrixWithScale();
+	UniformParam.TranslationInertia  = Kaleido.TranslationInertia;
+	UniformParam.RotationInertia     = Kaleido.RotationInertia;
+	UniformParam.ScaleInertia        = Kaleido.ScaleInertia;
+
+	return UniformParam;
+}
