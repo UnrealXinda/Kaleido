@@ -1,6 +1,7 @@
 #include "/Engine/Private/Common.ush"
 #include "../Common.ush"
 
+RWStructuredBuffer<uint3> DirtyFlagBuffer;
 RWStructuredBuffer<float4x4> InstanceTransformBuffer;
 StructuredBuffer<float4x4> InitialTransformBuffer;
 
@@ -43,21 +44,16 @@ void InclusiveScaleCS(uint3 ThreadId : SV_DispatchThreadID)
 		InstanceWorldT.xyz *= rcp(InstanceWorldT.w);
 		
 		float Distance = length(InfluencerT - InstanceWorldT.xyz);
-		float3 TargetScale;
 		
 		if (Distance < InfluencerRadius)
 		{
 			float3 LerpMinScale = lerp(MinScale, MaxScale, Direction);
 			float3 LerpMaxScale = lerp(MaxScale, MinScale, Direction);
-			TargetScale = lerp(LerpMinScale, LerpMaxScale, Distance / InfluencerRadius);
+			float3 TargetScale = lerp(LerpMinScale, LerpMaxScale, Distance / InfluencerRadius);
+			InstanceS = lerp(InstanceS, TargetScale, ScaleInertia);
+		
+			InstanceTransformBuffer[Index] = compose(InstanceT, InstanceR, InstanceS);
+			DirtyFlagBuffer[Index].z = 1;
 		}
-		else
-		{
-			TargetScale = InitialS;
-		}		
-		
-		InstanceS = lerp(InstanceS, TargetScale, ScaleInertia);
-		
-		InstanceTransformBuffer[Index] = compose(InstanceT, InstanceR, InstanceS);
 	}
 }

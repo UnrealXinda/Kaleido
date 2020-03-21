@@ -1,6 +1,7 @@
 #include "/Engine/Private/Common.ush"
 #include "../Common.ush"
 
+RWStructuredBuffer<uint3> DirtyFlagBuffer;
 RWStructuredBuffer<float4x4> InstanceTransformBuffer;
 StructuredBuffer<float4x4> InitialTransformBuffer;
 
@@ -45,22 +46,18 @@ void InclusiveRotationCS(uint3 ThreadId : SV_DispatchThreadID)
 		float4 InstanceWorldR = q_mul(ModelR, InstanceR);
 		
 		float Distance = length(InfluencerT - InstanceWorldT.xyz);
-		float4 TargetRotation;
 		
 		if (Distance < InfluencerRadius)
 		{
 			float4 WorldLookAt = q_look_at(InfluencerT - InstanceWorldT.xyz, up_from_quaternion(InstanceWorldR));
 			float4 LocalLookAt = q_diff(WorldLookAt, InstanceR);
-			TargetRotation = q_slerp(LocalLookAt, InitialR, Distance / InfluencerRadius);
+			float4 TargetRotation = q_slerp(LocalLookAt, InitialR, Distance / InfluencerRadius);
+			
+			// TODO: figure out how to apply slerp alpha from Eular angles to quaternions
+			InstanceR = q_slerp(InstanceR, TargetRotation, RotationInertia.x);
+		
+			InstanceTransformBuffer[Index] = compose(InstanceT, InstanceR, InstanceS);
+			DirtyFlagBuffer[Index].y = 1;
 		}
-		else
-		{
-			TargetRotation = InitialR;
-		}		
-		
-		// TODO: figure out how to apply slerp alpha from Eular angles to quaternions
-		InstanceR = q_slerp(InstanceR, TargetRotation, RotationInertia.x);
-		
-		InstanceTransformBuffer[Index] = compose(InstanceT, InstanceR, InstanceS);
 	}
 }

@@ -1,0 +1,14 @@
+RWStructuredBuffer<uint3> DirtyFlagBuffer;
+
+[numthreads(128, 1, 1)]
+void ClearDirtyFlagCS(uint3 ThreadId : SV_DispatchThreadID)
+{
+	const uint Index = ThreadId.x;
+	uint Size, Stride;
+	DirtyFlagBuffer.GetDimensions(Size, Stride);
+    
+	if (Index < Size)
+	{
+		DirtyFlagBuffer[Index] = uint3(0, 0, 0);
+	}
+}

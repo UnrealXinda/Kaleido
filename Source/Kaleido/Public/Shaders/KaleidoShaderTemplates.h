@@ -14,6 +14,9 @@
 #include "Components/KaleidoInstancedMeshComponent.h"
 #include "Actors/KaleidoInfluencer.h"
 
+using ComputeFunc = auto (*)(FRHICommandListImmediate&, const UKaleidoInstancedMeshComponent&, const AKaleidoInfluencer*) -> void;
+using KaleidoComputeFuncMap = TMap<FName, ComputeFunc>;
+
 template<class ShaderParamType>
 ShaderParamType CreateKaleidoShaderParameter(
 	const UKaleidoInstancedMeshComponent& Kaleido,
@@ -35,9 +38,10 @@ void ComputeTransforms_RenderThread(
 	RHICmdList.SetComputeShader(KaleidoShader->GetComputeShader());
 
 	// Bind shader buffers
+	FUnorderedAccessViewRHIRef DirtyFlagBufferUAV = Kaleido.GetDirtyFlagBufferUAV();
 	FUnorderedAccessViewRHIRef InstanceTransformBufferUAV = Kaleido.GetInstanceTransformBufferUAV();
 	FShaderResourceViewRHIRef InitialTransformBufferSRV = Kaleido.GetInitialTransformBufferSRV();
-	KaleidoShader->BindTransformBuffers(RHICmdList, InstanceTransformBufferUAV, InitialTransformBufferSRV);
+	KaleidoShader->BindTransformBuffers(RHICmdList, DirtyFlagBufferUAV, InstanceTransformBufferUAV, InitialTransformBufferSRV);
 
 	// Create shader uniform
 	ShaderParamType Param = CreateKaleidoShaderParameter<ShaderParamType>(Kaleido, Influencer);
@@ -54,4 +58,10 @@ void ComputeTransforms_RenderThread(
 
 	// Unbind shader buffers
 	KaleidoShader->UnbindTransformBuffers(RHICmdList);
+
+	// Wait for compute shader to finish to avoid race condition
+	const int32 BufferSize = InstanceCount * sizeof(FMatrix);
+	FStructuredBufferRHIRef TransformBufferRHIRef = Kaleido.GetInstanceTransformBufferRHIRef();
+	RHILockStructuredBuffer(TransformBufferRHIRef, 0, BufferSize, EResourceLockMode::RLM_ReadOnly);
+	RHIUnlockStructuredBuffer(TransformBufferRHIRef);
 }

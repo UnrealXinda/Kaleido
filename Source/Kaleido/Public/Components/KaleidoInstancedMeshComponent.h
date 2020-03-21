@@ -33,6 +33,16 @@ public:
 	virtual void BeginDestroy() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	FUnorderedAccessViewRHIRef GetDirtyFlagBufferUAV() const
+	{
+		return DirtyFlagBufferUAV;
+	}
+
+	FStructuredBufferRHIRef GetInstanceTransformBufferRHIRef() const
+	{
+		return InstanceTransformBuffer;
+	}
+
 	FUnorderedAccessViewRHIRef GetInstanceTransformBufferUAV() const
 	{
 		return InstanceTransformBufferUAV;
@@ -44,6 +54,10 @@ public:
 	}
 
 protected:
+
+	// TODO: resource release is not safe here because of multithreading environment
+	FStructuredBufferRHIRef    DirtyFlagBuffer;
+	FUnorderedAccessViewRHIRef DirtyFlagBufferUAV;
 
 	FStructuredBufferRHIRef    InstanceTransformBuffer;
 	FUnorderedAccessViewRHIRef InstanceTransformBufferUAV;
@@ -59,5 +73,6 @@ protected:
 	void TickTransforms();
 
 	void ProcessInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const TArray<TWeakObjectPtr<AKaleidoInfluencer>>& Influencers);
-	void CopyBackInstanceTransformBuffer_RenderThread();
+	void CopyBackInstanceTransformBuffer_RenderThread(FRHICommandListImmediate& RHICmdList);
+	void ClearDirtyFlagBuffer_RenderThread(FRHICommandListImmediate& RHICmdList);
 };

@@ -5,9 +5,60 @@
 #include "Actors/KaleidoInfluencer.h"
 #include "KaleidoMacros.h"
 
-// TODO: remove these includes
 #include "Shaders/KaleidoShaders.h"
-#include "Shaders/KaleidoShaderTemplates.h"
+
+class FClearDirtyFlagShader : public FGlobalShader
+{
+	DECLARE_SHADER_TYPE(FClearDirtyFlagShader, Global)
+
+public:
+	FClearDirtyFlagShader() {}
+	FClearDirtyFlagShader(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
+		: FGlobalShader(Initializer)
+	{
+		DirtyFlagBuffer.Bind(Initializer.ParameterMap, TEXT("DirtyFlagBuffer"));
+	}
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+
+	static bool ShouldCache(EShaderPlatform Platform)
+	{
+		return IsFeatureLevelSupported(Platform, ERHIFeatureLevel::SM5);
+	}
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+	{
+		FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+	}
+
+	virtual bool Serialize(FArchive& Ar) override
+	{
+		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
+		Ar << DirtyFlagBuffer;
+		return bShaderHasOutdatedParameters;
+	}
+
+	void BindShaderBuffers(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIRef DirtyFlagBufferUAV)
+	{
+		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		SetUAVParameter(RHICmdList, ComputeShaderRHI, DirtyFlagBuffer, DirtyFlagBufferUAV);
+	}
+
+	void UnbindShaderBuffers(FRHICommandList& RHICmdList)
+	{
+		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		SetUAVParameter(RHICmdList, ComputeShaderRHI, DirtyFlagBuffer, FUnorderedAccessViewRHIRef());
+	}
+
+private:
+
+	FShaderResourceParameter DirtyFlagBuffer;
+};
+
+IMPLEMENT_SHADER_TYPE(, FClearDirtyFlagShader, TEXT("/Plugin/Kaleido/ClearDirtyFlagShader.usf"), TEXT("ClearDirtyFlagCS"), SF_Compute);
 
 UKaleidoInstancedMeshComponent::UKaleidoInstancedMeshComponent(const FObjectInitializer& Initializer) :
 	Super(Initializer)
@@ -63,70 +114,57 @@ void UKaleidoInstancedMeshComponent::TickTransforms()
 		}
 	}
 
-	ENQUEUE_RENDER_COMMAND(DefaultScaleComputeCommand)
+	ENQUEUE_RENDER_COMMAND(KaleidoComputeCommand)
 	(
 		[Influencers, this](FRHICommandListImmediate& RHICmdList)
 		{
+			ClearDirtyFlagBuffer_RenderThread(RHICmdList);
 			ProcessInfluencers_RenderThread(RHICmdList, Influencers);
-			CopyBackInstanceTransformBuffer_RenderThread();
+			CopyBackInstanceTransformBuffer_RenderThread(RHICmdList);
 		}
 	);
 }
 
 void UKaleidoInstancedMeshComponent::ProcessInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const TArray<TWeakObjectPtr<AKaleidoInfluencer>>& Influencers)
 {
-	bool bHasTranslationShader = false;
-	bool bHasRotationShader    = false;
-	bool bHasScaleShader       = false;
-
-	for (TWeakObjectPtr<AKaleidoInfluencer> InfluencerPtr : Influencers)
+	for (TWeakObjectPtr<AKaleidoInfluencer> Influencer : Influencers)
 	{
-		if (InfluencerPtr.IsValid())
+		if (Influencer.IsValid())
 		{
-			if (const AKaleidoInfluencer* Influencer = Cast<AKaleidoInfluencer>(InfluencerPtr))
-			{
-				if (Influencer->TranslationShaderName != NAME_None)
-				{
-					bHasTranslationShader = true;
-					ComputeTransforms_RenderThread<FInclusiveTranslationShader>(RHICmdList, *this, Influencer);
-				}
-
-				if (Influencer->RotationShaderName != NAME_None)
-				{
-					bHasRotationShader = true;
-					ComputeTransforms_RenderThread<FInclusiveRotationShader>(RHICmdList, *this, Influencer);
-				}
-
-				if (Influencer->ScaleShaderName != NAME_None)
-				{
-					bHasScaleShader = true;
-					ComputeTransforms_RenderThread<FInclusiveScaleShader>(RHICmdList, *this, Influencer);
-				}
-			}
+			Kaleido::ComputeTransforms(RHICmdList, Influencer->TranslationShaderName, *this, Influencer.Get());
+			Kaleido::ComputeTransforms(RHICmdList, Influencer->RotationShaderName, *this, Influencer.Get());
+			Kaleido::ComputeTransforms(RHICmdList, Influencer->ScaleShaderName, *this, Influencer.Get());
 		}
 	}
 
-	if (!bHasTranslationShader)
-	{
-		ComputeTransforms_RenderThread<FDefaultTranslationShader>(RHICmdList, *this, nullptr);
-	}
-
-	if (!bHasRotationShader)
-	{
-		ComputeTransforms_RenderThread<FDefaultRotationShader>(RHICmdList, *this, nullptr);
-	}
-
-	if (!bHasScaleShader)
-	{
-		ComputeTransforms_RenderThread<FDefaultScaleShader>(RHICmdList, *this, nullptr);
-	}
+	ComputeTransforms_RenderThread<FKaleidoDefaultShader>(RHICmdList, *this, nullptr);
 }
 
-void UKaleidoInstancedMeshComponent::CopyBackInstanceTransformBuffer_RenderThread()
+void UKaleidoInstancedMeshComponent::ClearDirtyFlagBuffer_RenderThread(FRHICommandListImmediate& RHICmdList)
+{
+	check(IsInRenderingThread());
+
+	TShaderMapRef<FClearDirtyFlagShader> KaleidoShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+	RHICmdList.SetComputeShader(KaleidoShader->GetComputeShader());
+
+	// Bind shader buffers
+	KaleidoShader->BindShaderBuffers(RHICmdList, DirtyFlagBufferUAV);
+
+	// Dispatch shader
+	const int32 ThreadGroupCountX = FMath::CeilToInt(GetInstanceCount() / 128.f);
+	const int32 ThreadGroupCountY = 1;
+	const int32 ThreadGroupCountZ = 1;
+	DispatchComputeShader(RHICmdList, *KaleidoShader, ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+
+	// Unbind shader buffers
+	KaleidoShader->UnbindShaderBuffers(RHICmdList);
+}
+
+void UKaleidoInstancedMeshComponent::CopyBackInstanceTransformBuffer_RenderThread(FRHICommandListImmediate& RHICmdList)
 {
 	const int32 BufferSize = GetInstanceCount() * sizeof(FMatrix);
-	void* SrcPtr = RHILockStructuredBuffer(InstanceTransformBuffer.GetReference(), 0, BufferSize, EResourceLockMode::RLM_ReadOnly);
 	void* DstPtr = PerInstanceSMData.GetData();
+	void* SrcPtr = RHILockStructuredBuffer(InstanceTransformBuffer.GetReference(), 0, BufferSize, EResourceLockMode::RLM_ReadOnly);
 	FMemory::Memcpy(DstPtr, SrcPtr, BufferSize);
 	RHIUnlockStructuredBuffer(InstanceTransformBuffer.GetReference());
 }
@@ -150,6 +188,14 @@ void UKaleidoInstancedMeshComponent::InitComputeResources()
 		FMemory::Memcpy(DstPtr, SrcPtr, BufferSize);
 
 		FRHIResourceCreateInfo CreateInfo(&InitialTransforms);
+		FRHIResourceCreateInfo DirtyFlagBufferCreateInfo;
+
+		DirtyFlagBuffer = RHICreateStructuredBuffer(
+			sizeof(uint32) * 3,                       // Stride
+			sizeof(uint32) * 3 * InstanceCount,       // Size
+			BUF_UnorderedAccess | BUF_ShaderResource, // Usage
+			DirtyFlagBufferCreateInfo                 // Create info
+		);
 
 		InitialTransformBuffer = RHICreateStructuredBuffer(
 			sizeof(FMatrix),                 // Stride
@@ -165,6 +211,7 @@ void UKaleidoInstancedMeshComponent::InitComputeResources()
 			CreateInfo                                // Create info
 		);
 
+		DirtyFlagBufferUAV = RHICreateUnorderedAccessView(DirtyFlagBuffer, true, false);
 		InitialTransformBufferSRV = RHICreateShaderResourceView(InitialTransformBuffer);
 		InstanceTransformBufferUAV = RHICreateUnorderedAccessView(InstanceTransformBuffer, true, false);
 	}
@@ -179,6 +226,8 @@ void UKaleidoInstancedMeshComponent::ReleaseComputeResources()
 		}                                   \
 	} while(0);
 
+	SafeReleaseBufferResource(DirtyFlagBuffer);
+	SafeReleaseBufferResource(DirtyFlagBufferUAV);
 	SafeReleaseBufferResource(InstanceTransformBuffer);
 	SafeReleaseBufferResource(InstanceTransformBufferUAV);
 	SafeReleaseBufferResource(InitialTransformBuffer);

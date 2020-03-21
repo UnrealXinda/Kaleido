@@ -1,6 +1,7 @@
 #include "/Engine/Private/Common.ush"
 #include "../Common.ush"
 
+RWStructuredBuffer<uint3> DirtyFlagBuffer;
 RWStructuredBuffer<float4x4> InstanceTransformBuffer;
 StructuredBuffer<float4x4> InitialTransformBuffer;
 
@@ -43,22 +44,17 @@ void InclusiveTranslationCS(uint3 ThreadId : SV_DispatchThreadID)
 		InitialWorldT.xyz *= rcp(InitialWorldT.w);
 		
 		float Distance = length(InfluencerT - InitialWorldT.xyz);
-		float3 TargetTranslation;
 		
 		if (Distance < InfluencerRadius)
 		{
 			float X = 0;
 			float Y = 0;
 			float Z = lerp(MaxTranslation, MinTranslation, Distance / InfluencerRadius);
-			TargetTranslation = float3(X, Y, Z) + InitialT;
+			float3 TargetTranslation = float3(X, Y, Z) + InitialT;
+			InstanceT = lerp(InstanceT, TargetTranslation, TranslationInertia);
+		
+			InstanceTransformBuffer[Index] = compose(InstanceT, InstanceR, InstanceS);
+			DirtyFlagBuffer[Index].x = 1;
 		}
-		else
-		{
-			TargetTranslation = InitialT;
-		}		
-		
-		InstanceT = lerp(InstanceT, TargetTranslation, TranslationInertia);
-		
-		InstanceTransformBuffer[Index] = compose(InstanceT, InstanceR, InstanceS);
 	}
 }

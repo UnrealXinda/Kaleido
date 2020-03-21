@@ -1,0 +1,53 @@
+#include "/Engine/Private/Common.ush"
+#include "Common.ush"
+
+RWStructuredBuffer<uint3> DirtyFlagBuffer;
+RWStructuredBuffer<float4x4> InstanceTransformBuffer;
+StructuredBuffer<float4x4> InitialTransformBuffer;
+
+[numthreads(128, 1, 1)]
+void KaleidoDefaultCS(uint3 ThreadId : SV_DispatchThreadID)
+{
+	const float4x4 InfluencerTransform = KaleidoShaderUniform.InfluencerTransform;
+	const float4x4 ModelTransform      = KaleidoShaderUniform.ModelTransform;
+	const float3   TranslationInertia  = KaleidoShaderUniform.TranslationInertia;
+	const float3   RotationInertia     = KaleidoShaderUniform.RotationInertia;
+	const float3   ScaleInertia        = KaleidoShaderUniform.ScaleInertia;
+    
+	const uint Index = ThreadId.x;
+	uint Size, Stride;
+	InstanceTransformBuffer.GetDimensions(Size, Stride);
+    
+	if (Index < Size)
+	{
+		float4x4 InitialLocalTransform  = transpose(InitialTransformBuffer[Index]);
+		float4x4 InstanceLocalTransform = transpose(InstanceTransformBuffer[Index]);
+		
+		float3 InitialT, InitialS;
+		float3 InstanceT, InstanceS;
+		
+		float4 InitialR;
+		float4 InstanceR;
+        
+		decompose(InitialLocalTransform, InitialT, InitialR, InitialS);
+		decompose(InstanceLocalTransform, InstanceT, InstanceR, InstanceS);
+		
+		if (DirtyFlagBuffer[Index].x == 0)
+		{
+			InstanceT = lerp(InstanceT, InitialT, TranslationInertia);
+		}
+		
+		if (DirtyFlagBuffer[Index].y == 0)
+		{
+			// TODO: figure out how to apply slerp alpha from Eular angles to quaternions
+			InstanceR = q_slerp(InstanceR, InitialR, RotationInertia.x);		
+		}
+		
+		if (DirtyFlagBuffer[Index].z == 0)
+		{		
+			InstanceS = lerp(InstanceS, InitialS, ScaleInertia);
+		}
+		
+		InstanceTransformBuffer[Index] = compose(InstanceT, InstanceR, InstanceS);
+	}
+}
