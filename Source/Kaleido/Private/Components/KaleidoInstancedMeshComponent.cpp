@@ -66,9 +66,9 @@ UKaleidoInstancedMeshComponent::UKaleidoInstancedMeshComponent(const FObjectInit
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bStartWithTickEnabled = true;
 
-	TranslationInertia = FVector(0.5);
-	RotationInertia    = FVector(0.5);
-	ScaleInertia       = FVector(0.5);
+	TranslationInertia = FVector(0.1);
+	RotationInertia    = FVector(0.1);
+	ScaleInertia       = FVector(0.1);
 
 	SetCollisionProfileName(CollisionProfile_Kaleido);
 }

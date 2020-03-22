@@ -5,13 +5,16 @@
 #include "Shaders/KaleidoShaderTemplates.h"
 
 // Translation shaders
-#include "Shaders/Translation/InclusiveTranslationShader.h"
+#include "Shaders/Translation/SimpleTranslationShader.h"
+#include "Shaders/Translation/RandomTranslationShader.h"
 
 // Rotation shaders
-#include "Shaders/Scale/InclusiveScaleShader.h"
+#include "Shaders/Rotation/RandomRotationShader.h"
+#include "Shaders/Rotation/SimpleRotationShader.h"
 
 // Scale shaders
-#include "Shaders/Rotation/InclusiveRotationShader.h"
+#include "Shaders/Scale/SimpleScaleShader.h"
+#include "Shaders/Scale/RandomScaleShader.h"
 
 #define REGISTER_KALEIDO_COMPUTE_SHADER(ShaderName, ShaderClassName) \
 {                                                                    \
@@ -28,13 +31,16 @@ namespace Kaleido
 		REGISTER_KALEIDO_COMPUTE_SHADER("Default", FKaleidoDefaultShader),
 
 		// Custom translation shaders
-		REGISTER_KALEIDO_COMPUTE_SHADER("InclusiveTranslation", FInclusiveTranslationShader),
+		REGISTER_KALEIDO_COMPUTE_SHADER("SimpleTranslation", FSimpleTranslationShader),
+		REGISTER_KALEIDO_COMPUTE_SHADER("RandomTranslation", FRandomTranslationShader),
 
 		// Custom rotation shaders
-		REGISTER_KALEIDO_COMPUTE_SHADER("InclusiveRotation", FInclusiveRotationShader),
+		REGISTER_KALEIDO_COMPUTE_SHADER("RandomRotation", FRandomRotationShader),
+		REGISTER_KALEIDO_COMPUTE_SHADER("SimpleRotation", FSimpleRotationShader),
 
 		// Custom scale shaders
-		REGISTER_KALEIDO_COMPUTE_SHADER("InclusiveScale", FInclusiveScaleShader)
+		REGISTER_KALEIDO_COMPUTE_SHADER("SimpleScale", FSimpleScaleShader),
+		REGISTER_KALEIDO_COMPUTE_SHADER("RandomScale", FRandomScaleShader)
 	};
 
 	void ComputeTransforms(

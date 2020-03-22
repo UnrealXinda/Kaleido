@@ -7,6 +7,49 @@
 #define PI 3.14159265359f
 #endif 
 
+// https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+float4 q_from_eular(float3 eular)
+{
+	float roll = eular.x;
+	float pitch = eular.y;
+	float yaw = eular.z;
+	
+	// Abbreviations for the various angular functions
+	float cy = cos(yaw * 0.5);
+	float sy = sin(yaw * 0.5);
+	float cp = cos(pitch * 0.5);
+	float sp = sin(pitch * 0.5);
+	float cr = cos(roll * 0.5);
+	float sr = sin(roll * 0.5);
+
+	float4 q;
+	q.w = cy * cp * cr + sy * sp * sr;
+	q.x = cy * cp * sr - sy * sp * cr;
+	q.y = sy * cp * sr + cy * sp * cr;
+	q.z = sy * cp * cr - cy * sp * sr;
+
+	return q;
+}
+
+float4 q_from_eular(float roll, float pitch, float yaw)
+{
+	// Abbreviations for the various angular functions
+	float cy = cos(yaw * 0.5);
+	float sy = sin(yaw * 0.5);
+	float cp = cos(pitch * 0.5);
+	float sp = sin(pitch * 0.5);
+	float cr = cos(roll * 0.5);
+	float sr = sin(roll * 0.5);
+
+	float4 q;
+	q.w = cy * cp * cr + sy * sp * sr;
+	q.x = cy * cp * sr - sy * sp * cr;
+	q.y = sy * cp * sr + cy * sp * cr;
+	q.z = sy * cp * cr - cy * sp * sr;
+
+	return q;
+}
+
 // https://www.gamedev.net/forums/topic/56471-extracting-direction-vectors-from-quaternion/
 float3 up_from_quaternion(float4 q)
 {

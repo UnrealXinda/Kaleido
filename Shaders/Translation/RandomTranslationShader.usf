@@ -1,0 +1,62 @@
+#include "/Engine/Private/Common.ush"
+#include "../Common.ush"
+
+RWStructuredBuffer<uint3> DirtyFlagBuffer;
+RWStructuredBuffer<float4x4> InstanceTransformBuffer;
+StructuredBuffer<float4x4> InitialTransformBuffer;
+
+
+[numthreads(128, 1, 1)]
+void RandomTranslationCS(uint3 ThreadId : SV_DispatchThreadID)
+{
+	const float4x4 InfluencerTransform = RandomTranslationShaderUniform.InfluencerTransform;
+	const float4x4 ModelTransform      = RandomTranslationShaderUniform.ModelTransform;
+	const float3   TranslationInertia  = RandomTranslationShaderUniform.TranslationInertia;
+	const float3   RotationInertia     = RandomTranslationShaderUniform.RotationInertia;
+	const float3   ScaleInertia        = RandomTranslationShaderUniform.ScaleInertia;
+	
+	const float3   MinTranslation      = RandomTranslationShaderUniform.MinTranslation;
+	const float3   MaxTranslation      = RandomTranslationShaderUniform.MaxTranslation;
+	const float    InfluencerRadius    = RandomTranslationShaderUniform.InfluencerRadius;
+	
+	const uint Index = ThreadId.x;
+	uint Size, Stride;
+	InstanceTransformBuffer.GetDimensions(Size, Stride);
+    
+	if (Index < Size)
+	{
+		float4x4 InitialLocalTransform  = transpose(InitialTransformBuffer[Index]);
+		float4x4 InstanceLocalTransform = transpose(InstanceTransformBuffer[Index]);
+		
+		float3 InitialT, InitialS;
+		float3 InstanceT, InstanceS;
+		float3 InfluencerT, InfluencerS;
+		
+		float4 InitialR;
+		float4 InstanceR;
+		float4 InfluencerR;
+        
+		decompose(InitialLocalTransform, InitialT, InitialR, InitialS);
+		decompose(InstanceLocalTransform, InstanceT, InstanceR, InstanceS);
+		decompose(InfluencerTransform, InfluencerT, InfluencerR, InfluencerS);
+		
+		// Using initial world translation to avoid flickering
+		float4 InitialWorldT = mul(float4(InitialT, 1), ModelTransform);
+		InitialWorldT.xyz *= rcp(InitialWorldT.w);
+		
+		float Distance = length(InfluencerT - InitialWorldT.xyz);
+		
+		if (Distance < InfluencerRadius)
+		{
+			float Alpha = nrand(Index) * Distance / InfluencerRadius;
+			float X = 0;
+			float Y = 0;
+			float Z = lerp(MaxTranslation, MinTranslation, Alpha);
+			float3 TargetTranslation = float3(X, Y, Z) + InitialT;
+			InstanceT = lerp(InstanceT, TargetTranslation, TranslationInertia);
+		
+			InstanceTransformBuffer[Index] = compose(InstanceT, InstanceR, InstanceS);
+			DirtyFlagBuffer[Index].x = 1;
+		}
+	}
+}

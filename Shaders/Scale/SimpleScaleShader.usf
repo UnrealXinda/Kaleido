@@ -1,0 +1,59 @@
+#include "/Engine/Private/Common.ush"
+#include "../Common.ush"
+
+RWStructuredBuffer<uint3> DirtyFlagBuffer;
+RWStructuredBuffer<float4x4> InstanceTransformBuffer;
+StructuredBuffer<float4x4> InitialTransformBuffer;
+
+[numthreads(128, 1, 1)]
+void SimpleScaleCS(uint3 ThreadId : SV_DispatchThreadID)
+{
+	const float4x4 InfluencerTransform = SimpleScaleShaderUniform.InfluencerTransform;
+	const float4x4 ModelTransform      = SimpleScaleShaderUniform.ModelTransform;
+	const float3   TranslationInertia  = SimpleScaleShaderUniform.TranslationInertia;
+	const float3   RotationInertia     = SimpleScaleShaderUniform.RotationInertia;
+	const float3   ScaleInertia        = SimpleScaleShaderUniform.ScaleInertia;
+	
+	const float3   MinScale            = SimpleScaleShaderUniform.MinScale;
+	const float3   MaxScale            = SimpleScaleShaderUniform.MaxScale;
+	const float    InfluencerRadius    = SimpleScaleShaderUniform.InfluencerRadius;
+	const int      Direction           = SimpleScaleShaderUniform.Direction;
+    
+	const uint Index = ThreadId.x;
+	uint Size, Stride;
+	InstanceTransformBuffer.GetDimensions(Size, Stride);
+    
+	if (Index < Size)
+	{
+		float4x4 InitialLocalTransform  = transpose(InitialTransformBuffer[Index]);
+		float4x4 InstanceLocalTransform = transpose(InstanceTransformBuffer[Index]);
+		
+		float3 InitialT, InitialS;
+		float3 InstanceT, InstanceS;
+		float3 InfluencerT, InfluencerS;
+		
+		float4 InitialR;
+		float4 InstanceR;
+		float4 InfluencerR;
+        
+		decompose(InitialLocalTransform, InitialT, InitialR, InitialS);
+		decompose(InstanceLocalTransform, InstanceT, InstanceR, InstanceS);
+		decompose(InfluencerTransform, InfluencerT, InfluencerR, InfluencerS);
+		
+		float4 InstanceWorldT = mul(float4(InstanceT, 1), ModelTransform);
+		InstanceWorldT.xyz *= rcp(InstanceWorldT.w);
+		
+		float Distance = length(InfluencerT - InstanceWorldT.xyz);
+		
+		if (Distance < InfluencerRadius)
+		{
+			float3 LerpMinScale = lerp(MinScale, MaxScale, Direction);
+			float3 LerpMaxScale = lerp(MaxScale, MinScale, Direction);
+			float3 TargetScale = lerp(LerpMinScale, LerpMaxScale, Distance / InfluencerRadius);
+			InstanceS = lerp(InstanceS, TargetScale, ScaleInertia);
+		
+			InstanceTransformBuffer[Index] = compose(InstanceT, InstanceR, InstanceS);
+			DirtyFlagBuffer[Index].z = 1;
+		}
+	}
+}

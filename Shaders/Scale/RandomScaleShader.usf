@@ -6,18 +6,17 @@ RWStructuredBuffer<float4x4> InstanceTransformBuffer;
 StructuredBuffer<float4x4> InitialTransformBuffer;
 
 [numthreads(128, 1, 1)]
-void InclusiveScaleCS(uint3 ThreadId : SV_DispatchThreadID)
+void RandomScaleCS(uint3 ThreadId : SV_DispatchThreadID)
 {
-	const float4x4 InfluencerTransform = InclusiveScaleShaderUniform.InfluencerTransform;
-	const float4x4 ModelTransform      = InclusiveScaleShaderUniform.ModelTransform;
-	const float3   TranslationInertia  = InclusiveScaleShaderUniform.TranslationInertia;
-	const float3   RotationInertia     = InclusiveScaleShaderUniform.RotationInertia;
-	const float3   ScaleInertia        = InclusiveScaleShaderUniform.ScaleInertia;
+	const float4x4 InfluencerTransform = RandomScaleShaderUniform.InfluencerTransform;
+	const float4x4 ModelTransform      = RandomScaleShaderUniform.ModelTransform;
+	const float3   TranslationInertia  = RandomScaleShaderUniform.TranslationInertia;
+	const float3   RotationInertia     = RandomScaleShaderUniform.RotationInertia;
+	const float3   ScaleInertia        = RandomScaleShaderUniform.ScaleInertia;
 	
-	const float3   MinScale            = InclusiveScaleShaderUniform.MinScale;
-	const float3   MaxScale            = InclusiveScaleShaderUniform.MaxScale;
-	const float    InfluencerRadius    = InclusiveScaleShaderUniform.InfluencerRadius;
-	const int      Direction           = InclusiveScaleShaderUniform.Direction;
+	const float3   MinScale            = RandomScaleShaderUniform.MinScale;
+	const float3   MaxScale            = RandomScaleShaderUniform.MaxScale;
+	const float    InfluencerRadius    = RandomScaleShaderUniform.InfluencerRadius;
     
 	const uint Index = ThreadId.x;
 	uint Size, Stride;
@@ -47,9 +46,8 @@ void InclusiveScaleCS(uint3 ThreadId : SV_DispatchThreadID)
 		
 		if (Distance < InfluencerRadius)
 		{
-			float3 LerpMinScale = lerp(MinScale, MaxScale, Direction);
-			float3 LerpMaxScale = lerp(MaxScale, MinScale, Direction);
-			float3 TargetScale = lerp(LerpMinScale, LerpMaxScale, Distance / InfluencerRadius);
+			float Alpha = nrand(Index) * Distance / InfluencerRadius;			
+			float3 TargetScale = lerp(MinScale, MaxScale, Alpha);
 			InstanceS = lerp(InstanceS, TargetScale, ScaleInertia);
 		
 			InstanceTransformBuffer[Index] = compose(InstanceT, InstanceR, InstanceS);

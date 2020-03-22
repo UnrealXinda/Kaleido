@@ -1,2 +1,7 @@
 #include "Matrix.ush"
 #include "Quaternion.ush"
+
+float nrand(float input, float seed = 12.9898)
+{
+	return frac(sin(dot(input, seed)) * 43758.5453);
+}

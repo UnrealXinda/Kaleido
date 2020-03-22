@@ -6,17 +6,17 @@ RWStructuredBuffer<float4x4> InstanceTransformBuffer;
 StructuredBuffer<float4x4> InitialTransformBuffer;
 
 [numthreads(128, 1, 1)]
-void InclusiveTranslationCS(uint3 ThreadId : SV_DispatchThreadID)
+void SimpleTranslationCS(uint3 ThreadId : SV_DispatchThreadID)
 {
-	const float4x4 InfluencerTransform = InclusiveTranslationShaderUniform.InfluencerTransform;
-	const float4x4 ModelTransform      = InclusiveTranslationShaderUniform.ModelTransform;
-	const float3   TranslationInertia  = InclusiveTranslationShaderUniform.TranslationInertia;
-	const float3   RotationInertia     = InclusiveTranslationShaderUniform.RotationInertia;
-	const float3   ScaleInertia        = InclusiveTranslationShaderUniform.ScaleInertia;
+	const float4x4 InfluencerTransform = SimpleTranslationShaderUniform.InfluencerTransform;
+	const float4x4 ModelTransform      = SimpleTranslationShaderUniform.ModelTransform;
+	const float3   TranslationInertia  = SimpleTranslationShaderUniform.TranslationInertia;
+	const float3   RotationInertia     = SimpleTranslationShaderUniform.RotationInertia;
+	const float3   ScaleInertia        = SimpleTranslationShaderUniform.ScaleInertia;
 	
-	const float3   MinTranslation      = InclusiveTranslationShaderUniform.MinTranslation;
-	const float3   MaxTranslation      = InclusiveTranslationShaderUniform.MaxTranslation;
-	const float    InfluencerRadius    = InclusiveTranslationShaderUniform.InfluencerRadius;
+	const float3   MinTranslation      = SimpleTranslationShaderUniform.MinTranslation;
+	const float3   MaxTranslation      = SimpleTranslationShaderUniform.MaxTranslation;
+	const float    InfluencerRadius    = SimpleTranslationShaderUniform.InfluencerRadius;
 	
 	const uint Index = ThreadId.x;
 	uint Size, Stride;

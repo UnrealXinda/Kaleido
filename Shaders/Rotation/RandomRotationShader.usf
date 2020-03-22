@@ -6,15 +6,15 @@ RWStructuredBuffer<float4x4> InstanceTransformBuffer;
 StructuredBuffer<float4x4> InitialTransformBuffer;
 
 [numthreads(128, 1, 1)]
-void InclusiveRotationCS(uint3 ThreadId : SV_DispatchThreadID)
+void RandomRotationCS(uint3 ThreadId : SV_DispatchThreadID)
 {
-	const float4x4 InfluencerTransform = InclusiveRotationShaderUniform.InfluencerTransform;
-	const float4x4 ModelTransform      = InclusiveRotationShaderUniform.ModelTransform;
-	const float3   TranslationInertia  = InclusiveRotationShaderUniform.TranslationInertia;
-	const float3   RotationInertia     = InclusiveRotationShaderUniform.RotationInertia;
-	const float3   ScaleInertia        = InclusiveRotationShaderUniform.ScaleInertia;
+	const float4x4 InfluencerTransform = RandomRotationShaderUniform.InfluencerTransform;
+	const float4x4 ModelTransform      = RandomRotationShaderUniform.ModelTransform;
+	const float3   TranslationInertia  = RandomRotationShaderUniform.TranslationInertia;
+	const float3   RotationInertia     = RandomRotationShaderUniform.RotationInertia;
+	const float3   ScaleInertia        = RandomRotationShaderUniform.ScaleInertia;
 	
-	const float    InfluencerRadius    = InclusiveRotationShaderUniform.InfluencerRadius;
+	const float    InfluencerRadius    = RandomRotationShaderUniform.InfluencerRadius;
     
 	const uint Index = ThreadId.x;
 	uint Size, Stride;
@@ -49,9 +49,11 @@ void InclusiveRotationCS(uint3 ThreadId : SV_DispatchThreadID)
 		
 		if (Distance < InfluencerRadius)
 		{
-			float4 WorldLookAt = q_look_at(InfluencerT - InstanceWorldT.xyz, up_from_quaternion(InstanceWorldR));
-			float4 LocalLookAt = q_diff(WorldLookAt, InstanceR);
-			float4 TargetRotation = q_slerp(LocalLookAt, InitialR, Distance / InfluencerRadius);
+			float Row = nrand(Index, 78.233);
+			float Pitch = nrand(Index, 12.9898);
+			float Yaw = nrand(Index, 4.1414);
+			float4 Quat = q_from_eular(Row, Pitch, Yaw);
+			float4 TargetRotation = q_slerp(InitialR, Quat, Distance / InfluencerRadius);
 			
 			// TODO: figure out how to apply slerp alpha from Eular angles to quaternions
 			InstanceR = q_slerp(InstanceR, TargetRotation, RotationInertia.x);
