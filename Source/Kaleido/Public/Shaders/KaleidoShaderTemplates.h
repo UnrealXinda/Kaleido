@@ -49,6 +49,9 @@ void ComputeTransforms_RenderThread(
 {
 	check(IsInRenderingThread());
 	const int32 InstanceCount = KaleidoState.InstanceCount;
+	const int32 BufferSize = InstanceCount * sizeof(FMatrix);
+	FStructuredBufferRHIRef InstanceTransformBuffer = KaleidoState.InstanceTransformBuffer;
+	RHILockStructuredBuffer(InstanceTransformBuffer, 0, BufferSize, EResourceLockMode::RLM_ReadOnly);
 
 	TShaderMapRef<ShaderType> KaleidoShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 	RHICmdList.SetComputeShader(KaleidoShader->GetComputeShader());
@@ -75,8 +78,5 @@ void ComputeTransforms_RenderThread(
 	KaleidoShader->UnbindTransformBuffers(RHICmdList);
 
 	// Wait for compute shader to finish to avoid race condition
-	const int32 BufferSize = InstanceCount * sizeof(FMatrix);
-	FStructuredBufferRHIRef InstanceTransformBuffer = KaleidoState.InstanceTransformBuffer;
-	RHILockStructuredBuffer(InstanceTransformBuffer, 0, BufferSize, EResourceLockMode::RLM_ReadOnly);
 	RHIUnlockStructuredBuffer(InstanceTransformBuffer);
 }

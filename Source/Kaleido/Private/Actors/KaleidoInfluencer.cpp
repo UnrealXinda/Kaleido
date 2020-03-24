@@ -10,13 +10,6 @@
 	{ return Entry.ParamName == ParamName; }); \
 	if (Entry) Result = Entry->GetFunc();  \
 	return Result; \
-//
-//template <typename Type>
-//Type FKaleidoShaderDef::GetShaderParam<Type>(FName ParamName) const
-//{
-//	Type Result;
-//	return Result;
-//}
 
 template <>
 FVector4 FKaleidoShaderDef::GetShaderParam<FVector4>(FName ParamName) const

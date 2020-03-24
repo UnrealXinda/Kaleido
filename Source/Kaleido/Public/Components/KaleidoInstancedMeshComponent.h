@@ -21,6 +21,12 @@ struct FKaleidoState
 	FStructuredBufferRHIRef    InstanceTransformBuffer;
 };
 
+struct FKaleidoComputeInfo
+{
+	struct FKaleidoShaderDef ShaderDef;
+	struct FInfluencerState  InfluencerState;
+};
+
 UCLASS(hidecategories = (Object, LOD, Instances), editinlinenew, meta = (BlueprintSpawnableComponent), ClassGroup = Rendering, DisplayName = "KaleidoInstancedMeshComponent")
 class KALEIDO_API UKaleidoInstancedMeshComponent : public UInstancedStaticMeshComponent
 {
@@ -67,7 +73,7 @@ protected:
 
 	void TickTransforms();
 
-	void ProcessInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const TArray<TWeakObjectPtr<AKaleidoInfluencer>>& Influencers);
-	void CopyBackInstanceTransformBuffer_RenderThread(FRHICommandListImmediate& RHICmdList);
 	void ClearDirtyFlagBuffer_RenderThread(FRHICommandListImmediate& RHICmdList);
+	void ProcessInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const TArray<FKaleidoComputeInfo>& ComputeInfos);
+	void CopyBackInstanceTransformBuffer_RenderThread(FRHICommandListImmediate& RHICmdList);
 };

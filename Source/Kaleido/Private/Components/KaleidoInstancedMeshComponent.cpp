@@ -104,28 +104,39 @@ void UKaleidoInstancedMeshComponent::TickTransforms()
 	TArray<AActor*> OverlappingActors;
 	GetOverlappingActors(OverlappingActors);
 
-	TArray<TWeakObjectPtr<AKaleidoInfluencer>> Influencers;
+	TArray<FKaleidoComputeInfo> ComputeInfos;
 
 	for (AActor* Actor : OverlappingActors)
 	{
 		if (AKaleidoInfluencer* Influencer = Cast<AKaleidoInfluencer>(Actor))
 		{
-			Influencers.Add(Influencer);
+			FInfluencerState InfluencerState;
+			InfluencerState.InfluencerTransform = Influencer->GetActorTransform().ToMatrixWithScale();
+			InfluencerState.InfluencerRadius = Influencer->GetInfluencerRadius();
+
+			for (const FKaleidoShaderDef& ShaderDef : Influencer->Shaders)
+			{
+				FKaleidoComputeInfo Info;
+				Info.InfluencerState = InfluencerState;
+				Info.ShaderDef       = ShaderDef;
+
+				ComputeInfos.Add(MoveTemp(Info));
+			}
 		}
 	}
 
 	ENQUEUE_RENDER_COMMAND(KaleidoComputeCommand)
 	(
-		[Influencers, this](FRHICommandListImmediate& RHICmdList)
+		[ComputeInfos, this](FRHICommandListImmediate& RHICmdList)
 		{
 			ClearDirtyFlagBuffer_RenderThread(RHICmdList);
-			ProcessInfluencers_RenderThread(RHICmdList, Influencers);
+			ProcessInfluencers_RenderThread(RHICmdList, ComputeInfos);
 			CopyBackInstanceTransformBuffer_RenderThread(RHICmdList);
 		}
 	);
 }
 
-void UKaleidoInstancedMeshComponent::ProcessInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const TArray<TWeakObjectPtr<AKaleidoInfluencer>>& Influencers)
+void UKaleidoInstancedMeshComponent::ProcessInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const TArray<FKaleidoComputeInfo>& ComputeInfos)
 {
 	FKaleidoState KaleidoState;
 	FInfluencerState InfluencerState;
@@ -141,18 +152,9 @@ void UKaleidoInstancedMeshComponent::ProcessInfluencers_RenderThread(FRHICommand
 	KaleidoState.InitialTransformBufferSRV  = InitialTransformBufferSRV;
 	KaleidoState.InstanceTransformBuffer    = InstanceTransformBuffer;
 
-	for (TWeakObjectPtr<AKaleidoInfluencer> Influencer : Influencers)
+	for (const FKaleidoComputeInfo& Info : ComputeInfos)
 	{
-		if (Influencer.IsValid(false, true))
-		{
-			InfluencerState.InfluencerTransform = Influencer->GetActorTransform().ToMatrixWithScale();
-			InfluencerState.InfluencerRadius    = Influencer->GetInfluencerRadius();
-
-			for (FKaleidoShaderDef ShaderDef : Influencer->Shaders)
-			{
-				Kaleido::ComputeTransforms(RHICmdList, KaleidoState, InfluencerState, ShaderDef);
-			}
-		}
+		Kaleido::ComputeTransforms(RHICmdList, KaleidoState, Info.InfluencerState, Info.ShaderDef);
 	}
 
 	FKaleidoShaderDef ShaderDef;
