@@ -74,6 +74,6 @@ protected:
 	void TickTransforms();
 
 	void ClearDirtyFlagBuffer_RenderThread(FRHICommandListImmediate& RHICmdList);
-	void ProcessInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const TArray<FKaleidoComputeInfo>& ComputeInfos);
+	void ProcessInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const FKaleidoState& KaleidoState, const TArray<FKaleidoComputeInfo>& ComputeInfos);
 	void CopyBackInstanceTransformBuffer_RenderThread(FRHICommandListImmediate& RHICmdList);
 };

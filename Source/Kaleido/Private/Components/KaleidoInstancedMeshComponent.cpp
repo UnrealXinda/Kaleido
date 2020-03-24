@@ -125,22 +125,7 @@ void UKaleidoInstancedMeshComponent::TickTransforms()
 		}
 	}
 
-	ENQUEUE_RENDER_COMMAND(KaleidoComputeCommand)
-	(
-		[ComputeInfos, this](FRHICommandListImmediate& RHICmdList)
-		{
-			ClearDirtyFlagBuffer_RenderThread(RHICmdList);
-			ProcessInfluencers_RenderThread(RHICmdList, ComputeInfos);
-			CopyBackInstanceTransformBuffer_RenderThread(RHICmdList);
-		}
-	);
-}
-
-void UKaleidoInstancedMeshComponent::ProcessInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const TArray<FKaleidoComputeInfo>& ComputeInfos)
-{
 	FKaleidoState KaleidoState;
-	FInfluencerState InfluencerState;
-
 	KaleidoState.KaleidoTransform   = GetComponentTransform().ToMatrixWithScale();
 	KaleidoState.TranslationInertia = TranslationInertia;
 	KaleidoState.RotationInertia    = RotationInertia;
@@ -152,12 +137,26 @@ void UKaleidoInstancedMeshComponent::ProcessInfluencers_RenderThread(FRHICommand
 	KaleidoState.InitialTransformBufferSRV  = InitialTransformBufferSRV;
 	KaleidoState.InstanceTransformBuffer    = InstanceTransformBuffer;
 
+	ENQUEUE_RENDER_COMMAND(KaleidoComputeCommand)
+	(
+		[KaleidoState, ComputeInfos, this](FRHICommandListImmediate& RHICmdList)
+		{
+			ClearDirtyFlagBuffer_RenderThread(RHICmdList);
+			ProcessInfluencers_RenderThread(RHICmdList, KaleidoState, ComputeInfos);
+			CopyBackInstanceTransformBuffer_RenderThread(RHICmdList);
+		}
+	);
+}
+
+void UKaleidoInstancedMeshComponent::ProcessInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const FKaleidoState& KaleidoState, const TArray<FKaleidoComputeInfo>& ComputeInfos)
+{
 	for (const FKaleidoComputeInfo& Info : ComputeInfos)
 	{
 		Kaleido::ComputeTransforms(RHICmdList, KaleidoState, Info.InfluencerState, Info.ShaderDef);
 	}
 
 	FKaleidoShaderDef ShaderDef;
+	FInfluencerState InfluencerState;
 	ComputeTransforms_RenderThread<FKaleidoDefaultShader>(RHICmdList, KaleidoState, InfluencerState, ShaderDef);
 }
 
