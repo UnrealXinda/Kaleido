@@ -59,6 +59,7 @@ protected:
 };
 
 BEGIN_KALEIDO_SHADER_PARAMETER_STRUCT(FKaleidoDefaultShaderParameters, )
+	SHADER_PARAMETER(float, InfluencerRadius)
 END_KALEIDO_SHADER_PARAMETER_STRUCT()
 IMPLEMENT_KALEIDO_SHADER_PARAMETER_STRUCT(FKaleidoDefaultShaderParameters, "KaleidoShaderUniform");
 
@@ -77,14 +78,13 @@ public:
 IMPLEMENT_SHADER_TYPE(, FKaleidoDefaultShader, TEXT("/Plugin/Kaleido/KaleidoDefaultShader.usf"), TEXT("KaleidoDefaultCS"), SF_Compute);
 
 template<>
-FKaleidoDefaultShader::FParameters CreateKaleidoShaderParameter<FKaleidoDefaultShader::FParameters>(const UKaleidoInstancedMeshComponent& Kaleido, const AKaleidoInfluencer* Influencer)
-{
-	// TODO: These are thread unsafe	 
+FKaleidoDefaultShader::FParameters CreateKaleidoShaderParameter<FKaleidoDefaultShader::FParameters>(
+	const FKaleidoState&     KaleidoState,
+	const FInfluencerState&  InfluencerState,
+	const FKaleidoShaderDef& ShaderDef)
+{ 
 	FKaleidoDefaultShader::FParameters UniformParam;
-	UniformParam.ModelTransform     = Kaleido.GetComponentTransform().ToMatrixWithScale();
-	UniformParam.TranslationInertia = Kaleido.TranslationInertia;
-	UniformParam.RotationInertia    = Kaleido.RotationInertia;
-	UniformParam.ScaleInertia       = Kaleido.ScaleInertia;
+	SetDefaultKaleidoShaderParameters(UniformParam, KaleidoState, InfluencerState);
 
 	return UniformParam;
 }

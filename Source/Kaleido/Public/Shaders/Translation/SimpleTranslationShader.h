@@ -7,9 +7,9 @@
 #include "Shaders/KaleidoComputeShader.h"
 
 BEGIN_KALEIDO_SHADER_PARAMETER_STRUCT(FSimpleTranslationShaderParameters, )
-	SHADER_PARAMETER(float, MinTranslation)
-	SHADER_PARAMETER(float, MaxTranslation)
-	SHADER_PARAMETER(float, InfluencerRadius)
+	SHADER_PARAMETER(FVector, MinTranslation)
+	SHADER_PARAMETER(FVector, MaxTranslation)
+	SHADER_PARAMETER(float,   InfluencerRadius)
 END_KALEIDO_SHADER_PARAMETER_STRUCT()
 IMPLEMENT_KALEIDO_SHADER_PARAMETER_STRUCT(FSimpleTranslationShaderParameters, "SimpleTranslationShaderUniform");
 
@@ -28,19 +28,16 @@ public:
 IMPLEMENT_SHADER_TYPE(, FSimpleTranslationShader, TEXT("/Plugin/Kaleido/Translation/SimpleTranslationShader.usf"), TEXT("SimpleTranslationCS"), SF_Compute);
 
 template<>
-FSimpleTranslationShader::FParameters CreateKaleidoShaderParameter<FSimpleTranslationShader::FParameters>(const UKaleidoInstancedMeshComponent& Kaleido, const AKaleidoInfluencer* Influencer)
+FSimpleTranslationShader::FParameters CreateKaleidoShaderParameter<FSimpleTranslationShader::FParameters>(
+	const FKaleidoState&     KaleidoState,
+	const FInfluencerState&  InfluencerState,
+	const FKaleidoShaderDef& ShaderDef)
 {
-	// TODO: These are thread unsafe	 
 	FSimpleTranslationShader::FParameters UniformParam;
-	UniformParam.ModelTransform      = Kaleido.GetComponentTransform().ToMatrixWithScale();
-	UniformParam.InfluencerTransform = Influencer->GetActorTransform().ToMatrixWithScale();
-	UniformParam.TranslationInertia  = Kaleido.TranslationInertia;
-	UniformParam.RotationInertia     = Kaleido.RotationInertia;
-	UniformParam.ScaleInertia        = Kaleido.ScaleInertia;
+	SetDefaultKaleidoShaderParameters(UniformParam, KaleidoState, InfluencerState);
 
-	UniformParam.InfluencerRadius    = Influencer->GetInfluencerRadius();
-	UniformParam.MinTranslation      = 0.0f;    // TODO: these should come from influencer
-	UniformParam.MaxTranslation      = 100.0f;  // TODO: these should come from influencer
+	UniformParam.MinTranslation = ShaderDef.GetShaderParam<FVector>(FName("MinTranslation"));
+	UniformParam.MaxTranslation = ShaderDef.GetShaderParam<FVector>(FName("MaxTranslation"));
 
 	return UniformParam;
 }

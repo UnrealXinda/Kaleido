@@ -6,6 +6,48 @@
 #include "GameFramework/Actor.h"
 #include "KaleidoInfluencer.generated.h"
 
+// Used to define each shader parameter
+USTRUCT(BlueprintType)
+struct FKaleidoShaderParamEntry
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName ParamName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector4 Value;
+
+	FVector4 GetVector4Value() const { return Value; }
+	FVector  GetVector3Value() const { return FVector(Value); }
+	float    GetFloatValue() const   { return Value.X; }
+	int32    GetIntValue() const     { return StaticCast<int32>(Value.X); }
+	bool     GetBoolValue() const    { return Value.X != 0.0f; }
+};
+
+// Used to define shader parameters
+USTRUCT(BlueprintType)
+struct FKaleidoShaderDef
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName ShaderName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FKaleidoShaderParamEntry> Params;
+
+	template <typename Type>
+	Type GetShaderParam(FName ParamName) const;
+};
+
+// Used to pass influencer's current state to render thread
+struct FInfluencerState
+{
+	FMatrix InfluencerTransform;
+	float   InfluencerRadius;
+};
+
 UCLASS()
 class KALEIDO_API AKaleidoInfluencer : public AActor
 {
@@ -14,13 +56,7 @@ class KALEIDO_API AKaleidoInfluencer : public AActor
 public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Influencer")
-	FName TranslationShaderName;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Influencer")
-	FName RotationShaderName;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Influencer")
-	FName ScaleShaderName;
+	TArray<FKaleidoShaderDef> Shaders;
 	
 public:	
 

@@ -26,17 +26,13 @@ public:
 IMPLEMENT_SHADER_TYPE(, FSimpleRotationShader, TEXT("/Plugin/Kaleido/Rotation/SimpleRotationShader.usf"), TEXT("SimpleRotationCS"), SF_Compute);
 
 template<>
-FSimpleRotationShader::FParameters CreateKaleidoShaderParameter<FSimpleRotationShader::FParameters>(const UKaleidoInstancedMeshComponent& Kaleido, const AKaleidoInfluencer* Influencer)
-{
-	// TODO: These are thread unsafe	 
+FSimpleRotationShader::FParameters CreateKaleidoShaderParameter<FSimpleRotationShader::FParameters>(
+	const FKaleidoState&     KaleidoState,
+	const FInfluencerState&  InfluencerState,
+	const FKaleidoShaderDef& ShaderDef)
+{ 
 	FSimpleRotationShader::FParameters UniformParam;
-	UniformParam.ModelTransform      = Kaleido.GetComponentTransform().ToMatrixWithScale();
-	UniformParam.InfluencerTransform = Influencer->GetActorTransform().ToMatrixWithScale();
-	UniformParam.TranslationInertia  = Kaleido.TranslationInertia;
-	UniformParam.RotationInertia     = Kaleido.RotationInertia;
-	UniformParam.ScaleInertia        = Kaleido.ScaleInertia;
-
-	UniformParam.InfluencerRadius    = Influencer->GetInfluencerRadius();
+	SetDefaultKaleidoShaderParameters(UniformParam, KaleidoState, InfluencerState);
 
 	return UniformParam;
 }

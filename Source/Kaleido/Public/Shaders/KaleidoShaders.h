@@ -19,8 +19,11 @@
 #define REGISTER_KALEIDO_COMPUTE_SHADER(ShaderName, ShaderClassName) \
 {                                                                    \
 	FName(TEXT(ShaderName)),                                         \
-	[](FRHICommandListImmediate& RHICmdList, const UKaleidoInstancedMeshComponent& Kaleido, const AKaleidoInfluencer* Influencer) \
-	{ ComputeTransforms_RenderThread<ShaderClassName>(RHICmdList, Kaleido, Influencer);	} \
+	[](FRHICommandListImmediate& RHICmdList,                         \
+	   const FKaleidoState&      KaleidoState,                       \
+	   const FInfluencerState&   InfluencerState,                    \
+	   const FKaleidoShaderDef&  ShaderDef)                          \
+	{ ComputeTransforms_RenderThread<ShaderClassName>(RHICmdList, KaleidoState, InfluencerState, ShaderDef); } \
 }
 
 namespace Kaleido
@@ -45,23 +48,22 @@ namespace Kaleido
 
 	void ComputeTransforms(
 		FRHICommandListImmediate& RHICmdList,
-		FName ShaderName,
-		const UKaleidoInstancedMeshComponent& KaleidoComp,
-		const AKaleidoInfluencer* Influencer)
+		const FKaleidoState&      KaleidoState,
+		const FInfluencerState&   InfluencerState,
+		const FKaleidoShaderDef&  ShaderDef)
 	{
-		if (!ShaderName.IsNone())
+		if (!ShaderDef.ShaderName.IsNone())
 		{
-			if (const ComputeFunc* Func = KaleidoComputeShaderFuncMap.Find(ShaderName))
+			if (const ComputeFunc* Func = KaleidoComputeShaderFuncMap.Find(ShaderDef.ShaderName))
 			{
-				(*Func)(RHICmdList, KaleidoComp, Influencer);
+				(*Func)(RHICmdList, KaleidoState, InfluencerState, ShaderDef);
 			}
 			else
 			{
 				if (GEngine)
 				{
-					const TCHAR* OwnerNameStr = *(KaleidoComp.GetOwner()->GetFName().ToString());
-					const TCHAR* ShaderNameStr = *ShaderName.ToString();
-					GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan, FString::Printf(TEXT("%s with shader name %s not found"), OwnerNameStr, ShaderNameStr));
+					const TCHAR* ShaderNameStr = *ShaderDef.ShaderName.ToString();
+					GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan, FString::Printf(TEXT("shader name %s not found"), ShaderNameStr));
 				}
 			}
 		}

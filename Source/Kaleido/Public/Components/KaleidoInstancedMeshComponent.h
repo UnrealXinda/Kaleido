@@ -6,6 +6,21 @@
 #include "Components/InstancedStaticMeshComponent.h"
 #include "KaleidoInstancedMeshComponent.generated.h"
 
+// Used to pass Kaleido's current state to render thread
+struct FKaleidoState
+{
+	FMatrix KaleidoTransform;
+	FVector TranslationInertia;
+	FVector RotationInertia;
+	FVector ScaleInertia;
+	int32   InstanceCount;
+
+	FUnorderedAccessViewRHIRef DirtyFlagBufferUAV;
+	FUnorderedAccessViewRHIRef InstanceTransformBufferUAV;
+	FShaderResourceViewRHIRef  InitialTransformBufferSRV;
+	FStructuredBufferRHIRef    InstanceTransformBuffer;
+};
+
 UCLASS(hidecategories = (Object, LOD, Instances), editinlinenew, meta = (BlueprintSpawnableComponent), ClassGroup = Rendering, DisplayName = "KaleidoInstancedMeshComponent")
 class KALEIDO_API UKaleidoInstancedMeshComponent : public UInstancedStaticMeshComponent
 {
@@ -32,26 +47,6 @@ public:
 	virtual void BeginPlay() override;
 	virtual void BeginDestroy() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
-	FUnorderedAccessViewRHIRef GetDirtyFlagBufferUAV() const
-	{
-		return DirtyFlagBufferUAV;
-	}
-
-	FStructuredBufferRHIRef GetInstanceTransformBufferRHIRef() const
-	{
-		return InstanceTransformBuffer;
-	}
-
-	FUnorderedAccessViewRHIRef GetInstanceTransformBufferUAV() const
-	{
-		return InstanceTransformBufferUAV;
-	}
-
-	FShaderResourceViewRHIRef GetInitialTransformBufferSRV() const
-	{
-		return InitialTransformBufferSRV;
-	}
 
 protected:
 

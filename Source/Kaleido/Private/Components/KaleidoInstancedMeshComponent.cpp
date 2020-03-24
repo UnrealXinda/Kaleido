@@ -127,17 +127,36 @@ void UKaleidoInstancedMeshComponent::TickTransforms()
 
 void UKaleidoInstancedMeshComponent::ProcessInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const TArray<TWeakObjectPtr<AKaleidoInfluencer>>& Influencers)
 {
+	FKaleidoState KaleidoState;
+	FInfluencerState InfluencerState;
+
+	KaleidoState.KaleidoTransform   = GetComponentTransform().ToMatrixWithScale();
+	KaleidoState.TranslationInertia = TranslationInertia;
+	KaleidoState.RotationInertia    = RotationInertia;
+	KaleidoState.ScaleInertia       = ScaleInertia;
+	KaleidoState.InstanceCount      = GetInstanceCount();
+
+	KaleidoState.DirtyFlagBufferUAV         = DirtyFlagBufferUAV;
+	KaleidoState.InstanceTransformBufferUAV = InstanceTransformBufferUAV;
+	KaleidoState.InitialTransformBufferSRV  = InitialTransformBufferSRV;
+	KaleidoState.InstanceTransformBuffer    = InstanceTransformBuffer;
+
 	for (TWeakObjectPtr<AKaleidoInfluencer> Influencer : Influencers)
 	{
-		if (Influencer.IsValid())
+		if (Influencer.IsValid(false, true))
 		{
-			Kaleido::ComputeTransforms(RHICmdList, Influencer->TranslationShaderName, *this, Influencer.Get());
-			Kaleido::ComputeTransforms(RHICmdList, Influencer->RotationShaderName, *this, Influencer.Get());
-			Kaleido::ComputeTransforms(RHICmdList, Influencer->ScaleShaderName, *this, Influencer.Get());
+			InfluencerState.InfluencerTransform = Influencer->GetActorTransform().ToMatrixWithScale();
+			InfluencerState.InfluencerRadius    = Influencer->GetInfluencerRadius();
+
+			for (FKaleidoShaderDef ShaderDef : Influencer->Shaders)
+			{
+				Kaleido::ComputeTransforms(RHICmdList, KaleidoState, InfluencerState, ShaderDef);
+			}
 		}
 	}
 
-	ComputeTransforms_RenderThread<FKaleidoDefaultShader>(RHICmdList, *this, nullptr);
+	FKaleidoShaderDef ShaderDef;
+	ComputeTransforms_RenderThread<FKaleidoDefaultShader>(RHICmdList, KaleidoState, InfluencerState, ShaderDef);
 }
 
 void UKaleidoInstancedMeshComponent::ClearDirtyFlagBuffer_RenderThread(FRHICommandListImmediate& RHICmdList)

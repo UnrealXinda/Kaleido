@@ -47,10 +47,7 @@ void SimpleTranslationCS(uint3 ThreadId : SV_DispatchThreadID)
 		
 		if (Distance < InfluencerRadius)
 		{
-			float X = 0;
-			float Y = 0;
-			float Z = lerp(MaxTranslation, MinTranslation, Distance / InfluencerRadius);
-			float3 TargetTranslation = float3(X, Y, Z) + InitialT;
+			float3 TargetTranslation = lerp(MaxTranslation, MinTranslation, Distance / InfluencerRadius) + InitialT;
 			InstanceT = lerp(InstanceT, TargetTranslation, TranslationInertia);
 		
 			InstanceTransformBuffer[Index] = compose(InstanceT, InstanceR, InstanceS);

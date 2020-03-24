@@ -29,20 +29,18 @@ public:
 IMPLEMENT_SHADER_TYPE(, FSimpleScaleShader, TEXT("/Plugin/Kaleido/Scale/SimpleScaleShader.usf"), TEXT("SimpleScaleCS"), SF_Compute);
 
 template<>
-FSimpleScaleShader::FParameters CreateKaleidoShaderParameter<FSimpleScaleShader::FParameters>(const UKaleidoInstancedMeshComponent& Kaleido, const AKaleidoInfluencer* Influencer)
+FSimpleScaleShader::FParameters CreateKaleidoShaderParameter<FSimpleScaleShader::FParameters>(
+	const FKaleidoState&     KaleidoState,
+	const FInfluencerState&  InfluencerState,
+	const FKaleidoShaderDef& ShaderDef)
 {
 	// TODO: These are thread unsafe	 
 	FSimpleScaleShader::FParameters UniformParam;
-	UniformParam.ModelTransform      = Kaleido.GetComponentTransform().ToMatrixWithScale();
-	UniformParam.InfluencerTransform = Influencer->GetActorTransform().ToMatrixWithScale();
-	UniformParam.TranslationInertia  = Kaleido.TranslationInertia;
-	UniformParam.RotationInertia     = Kaleido.RotationInertia;
-	UniformParam.ScaleInertia        = Kaleido.ScaleInertia;
+	SetDefaultKaleidoShaderParameters(UniformParam, KaleidoState, InfluencerState);
 
-	UniformParam.InfluencerRadius    = Influencer->GetInfluencerRadius();
-	UniformParam.MinScale            = FVector(0.3);       // TODO: these should come from influencer
-	UniformParam.MaxScale            = FVector::OneVector; // TODO: these should come from influencer
-	UniformParam.Direction           = 0;
+	UniformParam.MinScale  = ShaderDef.GetShaderParam<FVector>(FName("MinScale"));
+	UniformParam.MaxScale  = ShaderDef.GetShaderParam<FVector>(FName("MaxScale"));
+	UniformParam.Direction = ShaderDef.GetShaderParam<int32>(FName("Direction"));
 
 	return UniformParam;
 }

@@ -28,19 +28,16 @@ public:
 IMPLEMENT_SHADER_TYPE(, FRandomTranslationShader, TEXT("/Plugin/Kaleido/Translation/RandomTranslationShader.usf"), TEXT("RandomTranslationCS"), SF_Compute);
 
 template<>
-FRandomTranslationShader::FParameters CreateKaleidoShaderParameter<FRandomTranslationShader::FParameters>(const UKaleidoInstancedMeshComponent& Kaleido, const AKaleidoInfluencer* Influencer)
-{
-	// TODO: These are thread unsafe	 
+FRandomTranslationShader::FParameters CreateKaleidoShaderParameter<FRandomTranslationShader::FParameters>(
+	const FKaleidoState&     KaleidoState,
+	const FInfluencerState&  InfluencerState,
+	const FKaleidoShaderDef& ShaderDef)
+{ 
 	FRandomTranslationShader::FParameters UniformParam;
-	UniformParam.ModelTransform      = Kaleido.GetComponentTransform().ToMatrixWithScale();
-	UniformParam.InfluencerTransform = Influencer->GetActorTransform().ToMatrixWithScale();
-	UniformParam.TranslationInertia  = Kaleido.TranslationInertia;
-	UniformParam.RotationInertia     = Kaleido.RotationInertia;
-	UniformParam.ScaleInertia        = Kaleido.ScaleInertia;
+	SetDefaultKaleidoShaderParameters(UniformParam, KaleidoState, InfluencerState);
 
-	UniformParam.InfluencerRadius    = Influencer->GetInfluencerRadius();
-	UniformParam.MinTranslation      = 0.0f;    // TODO: these should come from influencer
-	UniformParam.MaxTranslation      = 100.0f;  // TODO: these should come from influencer
+	UniformParam.MinTranslation = ShaderDef.GetShaderParam<float>(FName("MinTranslation"));
+	UniformParam.MaxTranslation = ShaderDef.GetShaderParam<float>(FName("MaxTranslation"));
 
 	return UniformParam;
 }
