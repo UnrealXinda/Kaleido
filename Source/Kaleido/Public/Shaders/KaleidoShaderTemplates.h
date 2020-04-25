@@ -32,13 +32,19 @@ ShaderParamType CreateKaleidoShaderParameter(
 	return Param;
 }
 
-#define SetDefaultKaleidoShaderParameters(Uniform, KaleidoState, InfluencerState) \
-Uniform.ModelTransform      = KaleidoState.KaleidoTransform;       \
-Uniform.InfluencerTransform = InfluencerState.InfluencerTransform; \
-Uniform.TranslationInertia  = KaleidoState.TranslationInertia;     \
-Uniform.RotationInertia     = KaleidoState.RotationInertia;        \
-Uniform.ScaleInertia        = KaleidoState.ScaleInertia;           \
-Uniform.InfluencerRadius    = InfluencerState.InfluencerRadius;
+template<class ShaderParamType>
+void SetDefaultKaleidoShaderParameters(
+	ShaderParamType&        Uniform,
+	const FKaleidoState&    KaleidoState,
+	const FInfluencerState& InfluencerState)
+{
+	Uniform.ModelTransform      = KaleidoState.KaleidoTransform;
+	Uniform.InfluencerTransform = InfluencerState.InfluencerTransform;
+	Uniform.TranslationInertia  = KaleidoState.TranslationInertia;
+	Uniform.RotationInertia     = KaleidoState.RotationInertia;
+	Uniform.ScaleInertia        = KaleidoState.ScaleInertia;
+	Uniform.InfluencerRadius    = InfluencerState.InfluencerRadius;
+}
 
 template<class ShaderType, typename ShaderParamType = ShaderType::FParameters>
 void ComputeTransforms_RenderThread(
