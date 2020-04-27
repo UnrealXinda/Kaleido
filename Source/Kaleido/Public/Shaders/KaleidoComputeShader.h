@@ -20,7 +20,8 @@ public:
 		FGlobalShader(Initializer)
 	{
 		DirtyFlagBuffer.Bind(Initializer.ParameterMap, TEXT("DirtyFlagBuffer"));
-		InstanceTransformBuffer.Bind(Initializer.ParameterMap, TEXT("InstanceTransformBuffer"));
+		OutputInstanceTransformBuffer.Bind(Initializer.ParameterMap, TEXT("OutputInstanceTransformBuffer"));
+		InputInstanceTransformBuffer.Bind(Initializer.ParameterMap, TEXT("InputInstanceTransformBuffer"));
 		InitialTransformBuffer.Bind(Initializer.ParameterMap, TEXT("InitialTransformBuffer"));
 	}
 
@@ -28,25 +29,29 @@ public:
 		FRHICommandList& RHICmdList,
 		FUnorderedAccessViewRHIRef DirtyFlagBufferUAV,
 		FUnorderedAccessViewRHIRef InstanceTransformBufferUAV,
+		FShaderResourceViewRHIRef InstanceTransformBufferSRV,
 		FShaderResourceViewRHIRef InitialTransformBufferSRV)
 	{
-		SetUAVParameter(RHICmdList, GetComputeShader(), DirtyFlagBuffer, DirtyFlagBufferUAV);
-		SetUAVParameter(RHICmdList, GetComputeShader(), InstanceTransformBuffer, InstanceTransformBufferUAV);
-		SetSRVParameter(RHICmdList, GetComputeShader(), InitialTransformBuffer, InitialTransformBufferSRV);
+		SetUAVParameter(RHICmdList, GetComputeShader(), DirtyFlagBuffer,               DirtyFlagBufferUAV);
+		SetUAVParameter(RHICmdList, GetComputeShader(), OutputInstanceTransformBuffer, InstanceTransformBufferUAV);
+		SetSRVParameter(RHICmdList, GetComputeShader(), InputInstanceTransformBuffer,  InstanceTransformBufferSRV);
+		SetSRVParameter(RHICmdList, GetComputeShader(), InitialTransformBuffer,        InitialTransformBufferSRV);
 	}
 
 	void UnbindTransformBuffers(FRHICommandList& RHICmdList)
 	{
-		SetUAVParameter(RHICmdList, GetComputeShader(), DirtyFlagBuffer, FUnorderedAccessViewRHIRef());
-		SetUAVParameter(RHICmdList, GetComputeShader(), InstanceTransformBuffer, FUnorderedAccessViewRHIRef());
-		SetSRVParameter(RHICmdList, GetComputeShader(), InitialTransformBuffer, FShaderResourceViewRHIRef());
+		SetUAVParameter(RHICmdList, GetComputeShader(), DirtyFlagBuffer,               FUnorderedAccessViewRHIRef());
+		SetUAVParameter(RHICmdList, GetComputeShader(), OutputInstanceTransformBuffer, FUnorderedAccessViewRHIRef());
+		SetSRVParameter(RHICmdList, GetComputeShader(), InputInstanceTransformBuffer,  FShaderResourceViewRHIRef());
+		SetSRVParameter(RHICmdList, GetComputeShader(), InitialTransformBuffer,        FShaderResourceViewRHIRef());
 	}
 
 	virtual bool Serialize(FArchive& Ar) override
 	{
 		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
 		Ar << DirtyFlagBuffer;
-		Ar << InstanceTransformBuffer;
+		Ar << OutputInstanceTransformBuffer;
+		Ar << InputInstanceTransformBuffer;
 		Ar << InitialTransformBuffer;
 		return bShaderHasOutdatedParameters;
 	}
@@ -54,7 +59,8 @@ public:
 protected:
 
 	FShaderResourceParameter DirtyFlagBuffer;
-	FShaderResourceParameter InstanceTransformBuffer;
+	FShaderResourceParameter OutputInstanceTransformBuffer;
+	FShaderResourceParameter InputInstanceTransformBuffer;
 	FShaderResourceParameter InitialTransformBuffer;
 };
 

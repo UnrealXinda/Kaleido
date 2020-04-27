@@ -54,19 +54,36 @@ void ComputeTransforms_RenderThread(
 	const FKaleidoShaderDef&  ShaderDef)
 {
 	check(IsInRenderingThread());
-	const int32 InstanceCount = KaleidoState.InstanceCount;
-	const int32 BufferSize = InstanceCount * sizeof(FMatrix);
-	FStructuredBufferRHIRef InstanceTransformBuffer = KaleidoState.InstanceTransformBuffer;
-	RHILockStructuredBuffer(InstanceTransformBuffer, 0, BufferSize, EResourceLockMode::RLM_ReadOnly);
 
-	TShaderMapRef<ShaderType> KaleidoShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+	SCOPE_CYCLE_COUNTER(STAT_ComputeShader);
+
+	const int32 InstanceCount = KaleidoState.InstanceCount;
+	TShaderMapRef<ShaderType>  KaleidoShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+	FUnorderedAccessViewRHIRef DirtyFlagBufferUAV         = KaleidoState.DirtyFlagBufferUAV;
+	FUnorderedAccessViewRHIRef InstanceTransformBufferUAV = KaleidoState.InstanceTransformBufferUAV;
+	FShaderResourceViewRHIRef  InstanceTransformBufferSRV = KaleidoState.InstanceTransformBufferSRV;
+	FShaderResourceViewRHIRef  InitialTransformBufferSRV  = KaleidoState.InitialTransformBufferSRV;
+
+	FRHIUnorderedAccessView* UAVs = InstanceTransformBufferUAV;
+
+	// Make UAV safe for read
+	RHICmdList.GetComputeContext().RHITransitionResources(
+		EResourceTransitionAccess::ERWBarrier,
+		EResourceTransitionPipeline::EComputeToCompute,
+		&UAVs,
+		1,
+		nullptr);
+
+	// Bind compute shader
 	RHICmdList.SetComputeShader(KaleidoShader->GetComputeShader());
 
 	// Bind shader buffers
-	FUnorderedAccessViewRHIRef DirtyFlagBufferUAV         = KaleidoState.DirtyFlagBufferUAV;
-	FUnorderedAccessViewRHIRef InstanceTransformBufferUAV = KaleidoState.InstanceTransformBufferUAV;
-	FShaderResourceViewRHIRef  InitialTransformBufferSRV  = KaleidoState.InitialTransformBufferSRV;
-	KaleidoShader->BindTransformBuffers(RHICmdList, DirtyFlagBufferUAV, InstanceTransformBufferUAV, InitialTransformBufferSRV);
+	KaleidoShader->BindTransformBuffers(
+		RHICmdList,
+		DirtyFlagBufferUAV,
+		InstanceTransformBufferUAV,
+		InstanceTransformBufferSRV,
+		InitialTransformBufferSRV);
 
 	// Create shader uniform
 	ShaderParamType Param = CreateKaleidoShaderParameter<ShaderParamType>(KaleidoState, InfluencerState, ShaderDef);
@@ -82,7 +99,4 @@ void ComputeTransforms_RenderThread(
 
 	// Unbind shader buffers
 	KaleidoShader->UnbindTransformBuffers(RHICmdList);
-
-	// Wait for compute shader to finish to avoid race condition
-	RHIUnlockStructuredBuffer(InstanceTransformBuffer);
 }

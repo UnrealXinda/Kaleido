@@ -16,9 +16,9 @@ struct FKaleidoState
 	int32   InstanceCount;
 
 	FUnorderedAccessViewRHIRef DirtyFlagBufferUAV;
+	FShaderResourceViewRHIRef  InstanceTransformBufferSRV;
 	FUnorderedAccessViewRHIRef InstanceTransformBufferUAV;
 	FShaderResourceViewRHIRef  InitialTransformBufferSRV;
-	FStructuredBufferRHIRef    InstanceTransformBuffer;
 };
 
 struct FKaleidoComputeInfo
@@ -57,14 +57,17 @@ public:
 protected:
 
 	// TODO: resource release is not safe here because of multithreading environment
+	FStructuredBufferRHIRef    InitialTransformBuffer;
+	FShaderResourceViewRHIRef  InitialTransformBufferSRV;
+
 	FStructuredBufferRHIRef    DirtyFlagBuffer;
 	FUnorderedAccessViewRHIRef DirtyFlagBufferUAV;
 
-	FStructuredBufferRHIRef    InstanceTransformBuffer;
-	FUnorderedAccessViewRHIRef InstanceTransformBufferUAV;
+	FStructuredBufferRHIRef    InstanceTransformBuffers[2];
+	FShaderResourceViewRHIRef  InstanceTransformBufferSRVs[2];
+	FUnorderedAccessViewRHIRef InstanceTransformBufferUAVs[2];
 
-	FStructuredBufferRHIRef    InitialTransformBuffer;
-	FShaderResourceViewRHIRef  InitialTransformBufferSRV;
+	int32                      FrontBufferIndex;
 
 protected:
 
@@ -74,6 +77,6 @@ protected:
 	void TickTransforms();
 
 	void ClearDirtyFlagBuffer_RenderThread(FRHICommandListImmediate& RHICmdList);
-	void ProcessInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const FKaleidoState& KaleidoState, const TArray<FKaleidoComputeInfo>& ComputeInfos);
+	void ProcessInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, FKaleidoState& KaleidoState, const TArray<FKaleidoComputeInfo>& ComputeInfos);
 	void CopyBackInstanceTransformBuffer_RenderThread(FRHICommandListImmediate& RHICmdList);
 };

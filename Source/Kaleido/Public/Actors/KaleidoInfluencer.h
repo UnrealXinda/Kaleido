@@ -35,10 +35,15 @@ struct FKaleidoShaderDef
 	FName ShaderName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bEnabled;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FKaleidoShaderParamEntry> Params;
 
 	template <typename Type>
 	Type GetShaderParam(FName ParamName) const;
+
+	FKaleidoShaderDef() : bEnabled(true) {}
 };
 
 // Used to pass influencer's current state to render thread

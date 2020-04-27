@@ -68,4 +68,9 @@ namespace Kaleido
 			}
 		}
 	}
+
+	bool IsValidShaderDef(const FKaleidoShaderDef& ShaderDef)
+	{
+		return KaleidoComputeShaderFuncMap.Find(ShaderDef.ShaderName) != nullptr;
+	}
 }

@@ -7,8 +7,8 @@
 #include "Shaders/KaleidoComputeShader.h"
 
 BEGIN_KALEIDO_SHADER_PARAMETER_STRUCT(FRandomTranslationShaderParameters, )
-	SHADER_PARAMETER(float, MinTranslation)
-	SHADER_PARAMETER(float, MaxTranslation)
+	SHADER_PARAMETER(FVector, MinTranslation)
+	SHADER_PARAMETER(FVector, MaxTranslation)
 	SHADER_PARAMETER(float, InfluencerRadius)
 END_KALEIDO_SHADER_PARAMETER_STRUCT()
 IMPLEMENT_KALEIDO_SHADER_PARAMETER_STRUCT(FRandomTranslationShaderParameters, "RandomTranslationShaderUniform");
@@ -36,8 +36,8 @@ FRandomTranslationShader::FParameters CreateKaleidoShaderParameter<FRandomTransl
 	FRandomTranslationShader::FParameters UniformParam;
 	SetDefaultKaleidoShaderParameters(UniformParam, KaleidoState, InfluencerState);
 
-	UniformParam.MinTranslation = ShaderDef.GetShaderParam<float>(FName("MinTranslation"));
-	UniformParam.MaxTranslation = ShaderDef.GetShaderParam<float>(FName("MaxTranslation"));
+	UniformParam.MinTranslation = ShaderDef.GetShaderParam<FVector>(FName("MinTranslation"));
+	UniformParam.MaxTranslation = ShaderDef.GetShaderParam<FVector>(FName("MaxTranslation"));
 
 	return UniformParam;
 }

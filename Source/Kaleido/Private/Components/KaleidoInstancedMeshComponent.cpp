@@ -7,6 +7,12 @@
 
 #include "Shaders/KaleidoShaders.h"
 
+DECLARE_STATS_GROUP(TEXT("Kaleido"),                STATGROUP_Kaleido,      STATCAT_Advanced);
+DECLARE_CYCLE_STAT(TEXT("Kaleido Compute Shader"),  STAT_ComputeShader,     STATGROUP_Kaleido);
+DECLARE_CYCLE_STAT(TEXT("Kaleido Compute Command"), STAT_ComputeTransforms, STATGROUP_Kaleido);
+DECLARE_CYCLE_STAT(TEXT("Copy Back"),               STAT_CopyBack,          STATGROUP_Kaleido);
+DECLARE_CYCLE_STAT(TEXT("Clear Dirty Flags"),       STAT_ClearDirtyFlags,   STATGROUP_Kaleido);
+
 class FClearDirtyFlagShader : public FGlobalShader
 {
 	DECLARE_SHADER_TYPE(FClearDirtyFlagShader, Global)
@@ -116,14 +122,22 @@ void UKaleidoInstancedMeshComponent::TickTransforms()
 
 			for (const FKaleidoShaderDef& ShaderDef : Influencer->Shaders)
 			{
-				FKaleidoComputeInfo Info;
-				Info.InfluencerState = InfluencerState;
-				Info.ShaderDef       = ShaderDef;
+				if (Kaleido::IsValidShaderDef(ShaderDef) && ShaderDef.bEnabled)
+				{
+					FKaleidoComputeInfo Info;
+					Info.InfluencerState = InfluencerState;
+					Info.ShaderDef = ShaderDef;
 
-				ComputeInfos.Add(MoveTemp(Info));
+					ComputeInfos.Add(MoveTemp(Info));
+				}
 			}
 		}
 	}
+
+	// Add default compute shader
+	FKaleidoComputeInfo DefaultComputeInfo;
+	DefaultComputeInfo.ShaderDef.ShaderName = "Default";
+	ComputeInfos.Add(MoveTemp(DefaultComputeInfo));
 
 	FKaleidoState KaleidoState;
 	KaleidoState.KaleidoTransform   = GetComponentTransform().ToMatrixWithScale();
@@ -133,13 +147,11 @@ void UKaleidoInstancedMeshComponent::TickTransforms()
 	KaleidoState.InstanceCount      = GetInstanceCount();
 
 	KaleidoState.DirtyFlagBufferUAV         = DirtyFlagBufferUAV;
-	KaleidoState.InstanceTransformBufferUAV = InstanceTransformBufferUAV;
 	KaleidoState.InitialTransformBufferSRV  = InitialTransformBufferSRV;
-	KaleidoState.InstanceTransformBuffer    = InstanceTransformBuffer;
 
 	ENQUEUE_RENDER_COMMAND(KaleidoComputeCommand)
 	(
-		[KaleidoState, ComputeInfos, this](FRHICommandListImmediate& RHICmdList)
+		[KaleidoState, ComputeInfos, this](FRHICommandListImmediate& RHICmdList) mutable -> void
 		{
 			ClearDirtyFlagBuffer_RenderThread(RHICmdList);
 			ProcessInfluencers_RenderThread(RHICmdList, KaleidoState, ComputeInfos);
@@ -148,21 +160,42 @@ void UKaleidoInstancedMeshComponent::TickTransforms()
 	);
 }
 
-void UKaleidoInstancedMeshComponent::ProcessInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, const FKaleidoState& KaleidoState, const TArray<FKaleidoComputeInfo>& ComputeInfos)
+void UKaleidoInstancedMeshComponent::ProcessInfluencers_RenderThread(FRHICommandListImmediate& RHICmdList, FKaleidoState& KaleidoState, const TArray<FKaleidoComputeInfo>& ComputeInfos)
 {
+	check(IsInRenderingThread());
+
+	SCOPE_CYCLE_COUNTER(STAT_ComputeTransforms);
+
 	for (const FKaleidoComputeInfo& Info : ComputeInfos)
 	{
+		// Swap buffers
+		FrontBufferIndex ^= 0x01;
+
+		FUnorderedAccessViewRHIRef FrontBufferUAV = InstanceTransformBufferUAVs[FrontBufferIndex];
+		FUnorderedAccessViewRHIRef BackBufferUAV = InstanceTransformBufferUAVs[FrontBufferIndex ^ 0x01];
+		FShaderResourceViewRHIRef  BackBufferSRV = InstanceTransformBufferSRVs[FrontBufferIndex ^ 0x01];
+
+		KaleidoState.InstanceTransformBufferSRV = BackBufferSRV;
+		KaleidoState.InstanceTransformBufferUAV = FrontBufferUAV;
+
 		Kaleido::ComputeTransforms(RHICmdList, KaleidoState, Info.InfluencerState, Info.ShaderDef);
 	}
-
-	FKaleidoShaderDef ShaderDef;
-	FInfluencerState InfluencerState;
-	ComputeTransforms_RenderThread<FKaleidoDefaultShader>(RHICmdList, KaleidoState, InfluencerState, ShaderDef);
 }
 
 void UKaleidoInstancedMeshComponent::ClearDirtyFlagBuffer_RenderThread(FRHICommandListImmediate& RHICmdList)
 {
 	check(IsInRenderingThread());
+
+	SCOPE_CYCLE_COUNTER(STAT_ClearDirtyFlags);
+
+	FRHIUnorderedAccessView* UAVs = DirtyFlagBufferUAV;
+
+	RHICmdList.GetComputeContext().RHITransitionResources(
+		EResourceTransitionAccess::ERWBarrier,
+		EResourceTransitionPipeline::EComputeToCompute,
+		&UAVs,
+		1,
+		nullptr);
 
 	TShaderMapRef<FClearDirtyFlagShader> KaleidoShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 	RHICmdList.SetComputeShader(KaleidoShader->GetComputeShader());
@@ -182,11 +215,30 @@ void UKaleidoInstancedMeshComponent::ClearDirtyFlagBuffer_RenderThread(FRHIComma
 
 void UKaleidoInstancedMeshComponent::CopyBackInstanceTransformBuffer_RenderThread(FRHICommandListImmediate& RHICmdList)
 {
+	check(IsInRenderingThread());
+
+	SCOPE_CYCLE_COUNTER(STAT_CopyBack);
+
+	FRHIUnorderedAccessView* UAVs = InstanceTransformBufferUAVs[FrontBufferIndex];
+
+	RHICmdList.GetComputeContext().RHITransitionResources(
+		EResourceTransitionAccess::ERWBarrier,
+		EResourceTransitionPipeline::EComputeToCompute,
+		&UAVs,
+		1,
+		nullptr);
+
 	const int32 BufferSize = GetInstanceCount() * sizeof(FMatrix);
+	const int32 BackBufferIndex = FrontBufferIndex ^ 0x01;
+
+	FStructuredBufferRHIRef BackBuffer = InstanceTransformBuffers[BackBufferIndex];
+	FStructuredBufferRHIRef FrontBuffer = InstanceTransformBuffers[FrontBufferIndex];
+
+	// Copy back transform buffer to SM data
 	void* DstPtr = PerInstanceSMData.GetData();
-	void* SrcPtr = RHILockStructuredBuffer(InstanceTransformBuffer.GetReference(), 0, BufferSize, EResourceLockMode::RLM_ReadOnly);
+	void* SrcPtr = RHILockStructuredBuffer(FrontBuffer.GetReference(), 0, BufferSize, EResourceLockMode::RLM_ReadOnly);
 	FMemory::Memcpy(DstPtr, SrcPtr, BufferSize);
-	RHIUnlockStructuredBuffer(InstanceTransformBuffer.GetReference());
+	RHIUnlockStructuredBuffer(FrontBuffer.GetReference());
 }
 
 void UKaleidoInstancedMeshComponent::InitComputeResources()
@@ -213,9 +265,10 @@ void UKaleidoInstancedMeshComponent::InitComputeResources()
 		DirtyFlagBuffer = RHICreateStructuredBuffer(
 			sizeof(uint32) * 3,                       // Stride
 			sizeof(uint32) * 3 * InstanceCount,       // Size
-			BUF_UnorderedAccess | BUF_ShaderResource, // Usage
+			BUF_UnorderedAccess,                      // Usage
 			DirtyFlagBufferCreateInfo                 // Create info
 		);
+		DirtyFlagBufferUAV = RHICreateUnorderedAccessView(DirtyFlagBuffer, true, false);
 
 		InitialTransformBuffer = RHICreateStructuredBuffer(
 			sizeof(FMatrix),                 // Stride
@@ -223,17 +276,19 @@ void UKaleidoInstancedMeshComponent::InitComputeResources()
 			BUF_ShaderResource,              // Usage
 			CreateInfo                       // Create info
 		);
-
-		InstanceTransformBuffer = RHICreateStructuredBuffer(
-			sizeof(FMatrix),                          // Stride
-			sizeof(FMatrix) * InstanceCount,          // Size
-			BUF_UnorderedAccess | BUF_ShaderResource, // Usage
-			CreateInfo                                // Create info
-		);
-
-		DirtyFlagBufferUAV = RHICreateUnorderedAccessView(DirtyFlagBuffer, true, false);
 		InitialTransformBufferSRV = RHICreateShaderResourceView(InitialTransformBuffer);
-		InstanceTransformBufferUAV = RHICreateUnorderedAccessView(InstanceTransformBuffer, true, false);
+
+		for (int Idx = 0; Idx < UE_ARRAY_COUNT(InstanceTransformBuffers); ++Idx)
+		{
+			InstanceTransformBuffers[Idx] = RHICreateStructuredBuffer(
+				sizeof(FMatrix),                          // Stride
+				sizeof(FMatrix) * InstanceCount,          // Size
+				BUF_UnorderedAccess | BUF_ShaderResource, // Usage
+				CreateInfo                                // Create info
+			);
+			InstanceTransformBufferSRVs[Idx] = RHICreateShaderResourceView(InstanceTransformBuffers[Idx]);
+			InstanceTransformBufferUAVs[Idx] = RHICreateUnorderedAccessView(InstanceTransformBuffers[Idx], true, false);
+		}
 	}
 }
 
@@ -245,13 +300,19 @@ void UKaleidoInstancedMeshComponent::ReleaseComputeResources()
 			Buffer->Release();              \
 		}                                   \
 	} while(0);
+	
+	SafeReleaseBufferResource(InitialTransformBuffer);
+	SafeReleaseBufferResource(InitialTransformBufferSRV);
 
 	SafeReleaseBufferResource(DirtyFlagBuffer);
 	SafeReleaseBufferResource(DirtyFlagBufferUAV);
-	SafeReleaseBufferResource(InstanceTransformBuffer);
-	SafeReleaseBufferResource(InstanceTransformBufferUAV);
-	SafeReleaseBufferResource(InitialTransformBuffer);
-	SafeReleaseBufferResource(InitialTransformBufferSRV);
+
+	for (int Idx = 0; Idx < UE_ARRAY_COUNT(InstanceTransformBuffers); ++Idx)
+	{
+		SafeReleaseBufferResource(InstanceTransformBuffers[Idx]);
+		SafeReleaseBufferResource(InstanceTransformBufferSRVs[Idx]);
+		SafeReleaseBufferResource(InstanceTransformBufferUAVs[Idx]);
+	}
 
 #undef SafeReleaseBufferResource
 }
