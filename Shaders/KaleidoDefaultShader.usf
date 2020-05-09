@@ -2,7 +2,8 @@
 #include "Common.ush"
 
 RWStructuredBuffer<uint3> DirtyFlagBuffer;
-RWStructuredBuffer<float4x4> InstanceTransformBuffer;
+RWStructuredBuffer<float4x4> OutputInstanceTransformBuffer;
+StructuredBuffer<float4x4> InputInstanceTransformBuffer;
 StructuredBuffer<float4x4> InitialTransformBuffer;
 
 [numthreads(128, 1, 1)]
@@ -16,12 +17,12 @@ void KaleidoDefaultCS(uint3 ThreadId : SV_DispatchThreadID)
     
 	const uint Index = ThreadId.x;
 	uint Size, Stride;
-	InstanceTransformBuffer.GetDimensions(Size, Stride);
+	InputInstanceTransformBuffer.GetDimensions(Size, Stride);
     
 	if (Index < Size)
 	{
 		float4x4 InitialLocalTransform  = transpose(InitialTransformBuffer[Index]);
-		float4x4 InstanceLocalTransform = transpose(InstanceTransformBuffer[Index]);
+		float4x4 InstanceLocalTransform = transpose(InputInstanceTransformBuffer[Index]);
 		
 		float3 InitialT, InitialS;
 		float3 InstanceT, InstanceS;
@@ -48,6 +49,6 @@ void KaleidoDefaultCS(uint3 ThreadId : SV_DispatchThreadID)
 			InstanceS = lerp(InstanceS, InitialS, ScaleInertia);
 		}
 		
-		InstanceTransformBuffer[Index] = compose(InstanceT, InstanceR, InstanceS);
+		OutputInstanceTransformBuffer[Index] = compose(InstanceT, InstanceR, InstanceS);
 	}
 }

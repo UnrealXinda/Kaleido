@@ -188,13 +188,10 @@ void UKaleidoInstancedMeshComponent::ClearDirtyFlagBuffer_RenderThread(FRHIComma
 
 	SCOPE_CYCLE_COUNTER(STAT_ClearDirtyFlags);
 
-	FRHIUnorderedAccessView* UAVs = DirtyFlagBufferUAV;
-
-	RHICmdList.GetComputeContext().RHITransitionResources(
+	RHICmdList.TransitionResource(
 		EResourceTransitionAccess::ERWBarrier,
 		EResourceTransitionPipeline::EComputeToCompute,
-		&UAVs,
-		1,
+		DirtyFlagBufferUAV,
 		nullptr);
 
 	TShaderMapRef<FClearDirtyFlagShader> KaleidoShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
@@ -219,13 +216,10 @@ void UKaleidoInstancedMeshComponent::CopyBackInstanceTransformBuffer_RenderThrea
 
 	SCOPE_CYCLE_COUNTER(STAT_CopyBack);
 
-	FRHIUnorderedAccessView* UAVs = InstanceTransformBufferUAVs[FrontBufferIndex];
-
-	RHICmdList.GetComputeContext().RHITransitionResources(
+	RHICmdList.TransitionResource(
 		EResourceTransitionAccess::ERWBarrier,
 		EResourceTransitionPipeline::EComputeToCompute,
-		&UAVs,
-		1,
+		InstanceTransformBufferUAVs[FrontBufferIndex],
 		nullptr);
 
 	const int32 BufferSize = GetInstanceCount() * sizeof(FMatrix);

@@ -67,11 +67,16 @@ void ComputeTransforms_RenderThread(
 	FRHIUnorderedAccessView* UAVs = InstanceTransformBufferUAV;
 
 	// Make UAV safe for read
-	RHICmdList.GetComputeContext().RHITransitionResources(
+	RHICmdList.TransitionResource(
 		EResourceTransitionAccess::ERWBarrier,
 		EResourceTransitionPipeline::EComputeToCompute,
-		&UAVs,
-		1,
+		InstanceTransformBufferUAV,
+		nullptr);
+
+	RHICmdList.TransitionResource(
+		EResourceTransitionAccess::ERWBarrier,
+		EResourceTransitionPipeline::EComputeToCompute,
+		DirtyFlagBufferUAV,
 		nullptr);
 
 	// Bind compute shader

@@ -121,6 +121,13 @@ float4x4 compose(float3 position, float4 quat, float3 scale)
     float4x4 m = quaternion_to_matrix(quat);
     m = m_scale(m, scale);
     m = m_translate(m, position);
+	// UE's Raytracing is very strict about the data validity of transform matrices.
+	// Hence, it has little tolerance towards tiny numbers. We're therefore hardcoding 
+	// the last row here.
+	m[3][0] = 0;
+	m[3][1] = 0;
+	m[3][2] = 0;
+	m[3][3] = 1;
     return m;
 }
 
