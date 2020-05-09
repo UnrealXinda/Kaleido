@@ -25,7 +25,7 @@ public:
 		FKaleidoComputeShader(Initializer) {}
 };
 
-IMPLEMENT_SHADER_TYPE(, FRandomTranslationShader, TEXT("/Plugin/Kaleido/Translation/RandomTranslationShader.usf"), TEXT("RandomTranslationCS"), SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FRandomTranslationShader, "/Plugin/Kaleido/Translation/RandomTranslationShader.usf", "RandomTranslationCS", SF_Compute);
 
 template<>
 FRandomTranslationShader::FParameters CreateKaleidoShaderParameter<FRandomTranslationShader::FParameters>(

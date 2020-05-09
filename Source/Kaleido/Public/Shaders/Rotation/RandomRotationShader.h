@@ -23,7 +23,7 @@ public:
 		FKaleidoComputeShader(Initializer) {}
 };
 
-IMPLEMENT_SHADER_TYPE(, FRandomRotationShader, TEXT("/Plugin/Kaleido/Rotation/RandomRotationShader.usf"), TEXT("RandomRotationCS"), SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FRandomRotationShader, "/Plugin/Kaleido/Rotation/RandomRotationShader.usf", "RandomRotationCS", SF_Compute);
 
 template<>
 FRandomRotationShader::FParameters CreateKaleidoShaderParameter<FRandomRotationShader::FParameters>(

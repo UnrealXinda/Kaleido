@@ -15,6 +15,8 @@ class FKaleidoComputeShader : public FGlobalShader
 {
 public:
 
+	DECLARE_EXPORTED_TYPE_LAYOUT(FKaleidoComputeShader, KALEIDO_API, Virtual);
+
 	FKaleidoComputeShader() {}
 	FKaleidoComputeShader(const ShaderMetaType::CompiledShaderInitializerType& Initializer) :
 		FGlobalShader(Initializer)
@@ -25,6 +27,8 @@ public:
 		InitialTransformBuffer.Bind(Initializer.ParameterMap, TEXT("InitialTransformBuffer"));
 	}
 
+	virtual ~FKaleidoComputeShader() {}
+
 	void BindTransformBuffers(
 		FRHICommandList& RHICmdList,
 		FUnorderedAccessViewRHIRef DirtyFlagBufferUAV,
@@ -32,37 +36,29 @@ public:
 		FShaderResourceViewRHIRef InstanceTransformBufferSRV,
 		FShaderResourceViewRHIRef InitialTransformBufferSRV)
 	{
-		SetUAVParameter(RHICmdList, GetComputeShader(), DirtyFlagBuffer,               DirtyFlagBufferUAV);
-		SetUAVParameter(RHICmdList, GetComputeShader(), OutputInstanceTransformBuffer, InstanceTransformBufferUAV);
-		SetSRVParameter(RHICmdList, GetComputeShader(), InputInstanceTransformBuffer,  InstanceTransformBufferSRV);
-		SetSRVParameter(RHICmdList, GetComputeShader(), InitialTransformBuffer,        InitialTransformBufferSRV);
+		SetUAVParameter(RHICmdList, RHICmdList.GetBoundComputeShader(), DirtyFlagBuffer,               DirtyFlagBufferUAV);
+		SetUAVParameter(RHICmdList, RHICmdList.GetBoundComputeShader(), OutputInstanceTransformBuffer, InstanceTransformBufferUAV);
+		SetSRVParameter(RHICmdList, RHICmdList.GetBoundComputeShader(), InputInstanceTransformBuffer,  InstanceTransformBufferSRV);
+		SetSRVParameter(RHICmdList, RHICmdList.GetBoundComputeShader(), InitialTransformBuffer,        InitialTransformBufferSRV);
 	}
 
 	void UnbindTransformBuffers(FRHICommandList& RHICmdList)
 	{
-		SetUAVParameter(RHICmdList, GetComputeShader(), DirtyFlagBuffer,               FUnorderedAccessViewRHIRef());
-		SetUAVParameter(RHICmdList, GetComputeShader(), OutputInstanceTransformBuffer, FUnorderedAccessViewRHIRef());
-		SetSRVParameter(RHICmdList, GetComputeShader(), InputInstanceTransformBuffer,  FShaderResourceViewRHIRef());
-		SetSRVParameter(RHICmdList, GetComputeShader(), InitialTransformBuffer,        FShaderResourceViewRHIRef());
-	}
-
-	virtual bool Serialize(FArchive& Ar) override
-	{
-		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
-		Ar << DirtyFlagBuffer;
-		Ar << OutputInstanceTransformBuffer;
-		Ar << InputInstanceTransformBuffer;
-		Ar << InitialTransformBuffer;
-		return bShaderHasOutdatedParameters;
+		SetUAVParameter(RHICmdList, RHICmdList.GetBoundComputeShader(), DirtyFlagBuffer,               FUnorderedAccessViewRHIRef());
+		SetUAVParameter(RHICmdList, RHICmdList.GetBoundComputeShader(), OutputInstanceTransformBuffer, FUnorderedAccessViewRHIRef());
+		SetSRVParameter(RHICmdList, RHICmdList.GetBoundComputeShader(), InputInstanceTransformBuffer,  FShaderResourceViewRHIRef());
+		SetSRVParameter(RHICmdList, RHICmdList.GetBoundComputeShader(), InitialTransformBuffer,        FShaderResourceViewRHIRef());
 	}
 
 protected:
 
-	FShaderResourceParameter DirtyFlagBuffer;
-	FShaderResourceParameter OutputInstanceTransformBuffer;
-	FShaderResourceParameter InputInstanceTransformBuffer;
-	FShaderResourceParameter InitialTransformBuffer;
+	LAYOUT_FIELD(FShaderResourceParameter, DirtyFlagBuffer);
+	LAYOUT_FIELD(FShaderResourceParameter, OutputInstanceTransformBuffer);
+	LAYOUT_FIELD(FShaderResourceParameter, InputInstanceTransformBuffer);
+	LAYOUT_FIELD(FShaderResourceParameter, InitialTransformBuffer);
 };
+
+IMPLEMENT_UNREGISTERED_TEMPLATE_TYPE_LAYOUT(, FKaleidoComputeShader);
 
 BEGIN_KALEIDO_SHADER_PARAMETER_STRUCT(FKaleidoDefaultShaderParameters, )
 	SHADER_PARAMETER(float, InfluencerRadius)
@@ -81,7 +77,7 @@ public:
 		FKaleidoComputeShader(Initializer) {}
 };
 
-IMPLEMENT_SHADER_TYPE(, FKaleidoDefaultShader, TEXT("/Plugin/Kaleido/KaleidoDefaultShader.usf"), TEXT("KaleidoDefaultCS"), SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FKaleidoDefaultShader, "/Plugin/Kaleido/KaleidoDefaultShader.usf", "KaleidoDefaultCS", SF_Compute);
 
 template<>
 FKaleidoDefaultShader::FParameters CreateKaleidoShaderParameter<FKaleidoDefaultShader::FParameters>(

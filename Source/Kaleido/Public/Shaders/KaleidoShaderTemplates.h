@@ -80,7 +80,7 @@ void ComputeTransforms_RenderThread(
 		nullptr);
 
 	// Bind compute shader
-	RHICmdList.SetComputeShader(KaleidoShader->GetComputeShader());
+	RHICmdList.SetComputeShader(KaleidoShader.GetComputeShader());
 
 	// Bind shader buffers
 	KaleidoShader->BindTransformBuffers(
@@ -100,7 +100,7 @@ void ComputeTransforms_RenderThread(
 	const int32 ThreadGroupCountX = FMath::CeilToInt(InstanceCount / 128.f);
 	const int32 ThreadGroupCountY = 1;
 	const int32 ThreadGroupCountZ = 1;
-	DispatchComputeShader(RHICmdList, *KaleidoShader, ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+	DispatchComputeShader(RHICmdList, KaleidoShader, ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
 
 	// Unbind shader buffers
 	KaleidoShader->UnbindTransformBuffers(RHICmdList);

@@ -25,7 +25,7 @@ public:
 		FKaleidoComputeShader(Initializer) {}
 };
 
-IMPLEMENT_SHADER_TYPE(, FSimpleTranslationShader, TEXT("/Plugin/Kaleido/Translation/SimpleTranslationShader.usf"), TEXT("SimpleTranslationCS"), SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FSimpleTranslationShader, "/Plugin/Kaleido/Translation/SimpleTranslationShader.usf", "SimpleTranslationCS", SF_Compute);
 
 template<>
 FSimpleTranslationShader::FParameters CreateKaleidoShaderParameter<FSimpleTranslationShader::FParameters>(

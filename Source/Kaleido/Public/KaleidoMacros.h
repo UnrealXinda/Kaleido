@@ -5,7 +5,6 @@
 #define CollisionProfile_Kaleido      TEXT("Kaleido")
 #define CollisionProfile_Influencer   TEXT("Influencer")
 
-
 #define BEGIN_KALEIDO_SHADER_PARAMETER_STRUCT(StructTypeName, PrefixKeywords)  \
 BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(StructTypeName, PrefixKeywords)           \
 	SHADER_PARAMETER(FMatrix, InfluencerTransform)                             \
@@ -21,7 +20,9 @@ END_GLOBAL_SHADER_PARAMETER_STRUCT()
 IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(StructTypeName, ShaderVariableName)
 
 #define DECLARE_KALEIDO_COMPUTE_SHADER(ShaderTypeName)                                         \
-DECLARE_SHADER_TYPE(ShaderTypeName, Global)                                                    \
+INTERNAL_DECLARE_SHADER_TYPE_COMMON(ShaderTypeName, Global, KALEIDO_API);                      \
+DECLARE_EXPORTED_TYPE_LAYOUT(ShaderTypeName, KALEIDO_API, Virtual);                            \
+public:                                                                                        \
 static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)     \
 {                                                                                              \
 	return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);                \
@@ -38,7 +39,8 @@ static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameter
 void SetShaderParameters(FRHICommandList& RHICmdList, const FParameters& Parameters)           \
 {                                                                                              \
 	auto Param = GetUniformBufferParameter<FParameters>();                                     \
-	SetUniformBufferParameterImmediate(RHICmdList, GetComputeShader(), Param, Parameters);     \
+	FRHIComputeShader* ComputeShader = RHICmdList.GetBoundComputeShader();                     \
+	SetUniformBufferParameterImmediate(RHICmdList, ComputeShader, Param, Parameters);          \
 }                                                                                              \
 public:
 

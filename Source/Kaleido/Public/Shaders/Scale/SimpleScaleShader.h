@@ -26,7 +26,7 @@ public:
 		FKaleidoComputeShader(Initializer) {}
 };
 
-IMPLEMENT_SHADER_TYPE(, FSimpleScaleShader, TEXT("/Plugin/Kaleido/Scale/SimpleScaleShader.usf"), TEXT("SimpleScaleCS"), SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FSimpleScaleShader, "/Plugin/Kaleido/Scale/SimpleScaleShader.usf", "SimpleScaleCS", SF_Compute);
 
 template<>
 FSimpleScaleShader::FParameters CreateKaleidoShaderParameter<FSimpleScaleShader::FParameters>(

@@ -25,7 +25,7 @@ public:
 		FKaleidoComputeShader(Initializer) {}
 };
 
-IMPLEMENT_SHADER_TYPE(, FRandomScaleShader, TEXT("/Plugin/Kaleido/Scale/RandomScaleShader.usf"), TEXT("RandomScaleCS"), SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FRandomScaleShader, "/Plugin/Kaleido/Scale/RandomScaleShader.usf", "RandomScaleCS", SF_Compute);
 
 template<>
 FRandomScaleShader::FParameters CreateKaleidoShaderParameter<FRandomScaleShader::FParameters>(

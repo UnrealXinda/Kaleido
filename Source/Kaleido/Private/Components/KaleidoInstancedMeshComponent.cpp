@@ -40,31 +40,24 @@ public:
 		FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
 	}
 
-	virtual bool Serialize(FArchive& Ar) override
-	{
-		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
-		Ar << DirtyFlagBuffer;
-		return bShaderHasOutdatedParameters;
-	}
-
 	void BindShaderBuffers(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIRef DirtyFlagBufferUAV)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, DirtyFlagBuffer, DirtyFlagBufferUAV);
 	}
 
 	void UnbindShaderBuffers(FRHICommandList& RHICmdList)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, DirtyFlagBuffer, FUnorderedAccessViewRHIRef());
 	}
 
 private:
 
-	FShaderResourceParameter DirtyFlagBuffer;
+	LAYOUT_FIELD(FShaderResourceParameter, DirtyFlagBuffer);
 };
 
-IMPLEMENT_SHADER_TYPE(, FClearDirtyFlagShader, TEXT("/Plugin/Kaleido/ClearDirtyFlagShader.usf"), TEXT("ClearDirtyFlagCS"), SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FClearDirtyFlagShader, "/Plugin/Kaleido/ClearDirtyFlagShader.usf", "ClearDirtyFlagCS", SF_Compute);
 
 UKaleidoInstancedMeshComponent::UKaleidoInstancedMeshComponent(const FObjectInitializer& Initializer) :
 	Super(Initializer)
@@ -195,7 +188,7 @@ void UKaleidoInstancedMeshComponent::ClearDirtyFlagBuffer_RenderThread(FRHIComma
 		nullptr);
 
 	TShaderMapRef<FClearDirtyFlagShader> KaleidoShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-	RHICmdList.SetComputeShader(KaleidoShader->GetComputeShader());
+	RHICmdList.SetComputeShader(KaleidoShader.GetComputeShader());
 
 	// Bind shader buffers
 	KaleidoShader->BindShaderBuffers(RHICmdList, DirtyFlagBufferUAV);
@@ -204,7 +197,7 @@ void UKaleidoInstancedMeshComponent::ClearDirtyFlagBuffer_RenderThread(FRHIComma
 	const int32 ThreadGroupCountX = FMath::CeilToInt(GetInstanceCount() / 128.f);
 	const int32 ThreadGroupCountY = 1;
 	const int32 ThreadGroupCountZ = 1;
-	DispatchComputeShader(RHICmdList, *KaleidoShader, ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+	DispatchComputeShader(RHICmdList, KaleidoShader, ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
 
 	// Unbind shader buffers
 	KaleidoShader->UnbindShaderBuffers(RHICmdList);

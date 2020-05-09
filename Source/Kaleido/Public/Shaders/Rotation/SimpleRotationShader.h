@@ -23,7 +23,7 @@ public:
 		FKaleidoComputeShader(Initializer) {}
 };
 
-IMPLEMENT_SHADER_TYPE(, FSimpleRotationShader, TEXT("/Plugin/Kaleido/Rotation/SimpleRotationShader.usf"), TEXT("SimpleRotationCS"), SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FSimpleRotationShader, "/Plugin/Kaleido/Rotation/SimpleRotationShader.usf", "SimpleRotationCS", SF_Compute);
 
 template<>
 FSimpleRotationShader::FParameters CreateKaleidoShaderParameter<FSimpleRotationShader::FParameters>(

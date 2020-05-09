@@ -1,3 +1,5 @@
+#include "/Engine/Public/Platform.ush"
+
 RWStructuredBuffer<uint3> DirtyFlagBuffer;
 
 [numthreads(128, 1, 1)]
