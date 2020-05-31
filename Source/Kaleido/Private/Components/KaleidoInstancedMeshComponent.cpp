@@ -161,11 +161,10 @@ void UKaleidoInstancedMeshComponent::ProcessInfluencers_RenderThread(FRHICommand
 
 	for (const FKaleidoComputeInfo& Info : ComputeInfos)
 	{
-		// Swap buffers
+		// Flip buffers
 		FrontBufferIndex ^= 0x01;
 
 		FUnorderedAccessViewRHIRef FrontBufferUAV = InstanceTransformBufferUAVs[FrontBufferIndex];
-		FUnorderedAccessViewRHIRef BackBufferUAV = InstanceTransformBufferUAVs[FrontBufferIndex ^ 0x01];
 		FShaderResourceViewRHIRef  BackBufferSRV = InstanceTransformBufferSRVs[FrontBufferIndex ^ 0x01];
 
 		KaleidoState.InstanceTransformBufferSRV = BackBufferSRV;

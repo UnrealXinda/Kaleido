@@ -4,41 +4,18 @@
 #include "Actors/KaleidoInfluencer.h"
 #include "Components/SphereComponent.h"
 
-#define GetShaderParamImpl(Type, GetFunc, ParamName) \
-	Type Result;                \
-	const FKaleidoShaderParamEntry* Entry = Params.FindByPredicate([ParamName](const FKaleidoShaderParamEntry& Entry) \
-	{ return Entry.ParamName == ParamName; }); \
-	if (Entry) Result = Entry->GetFunc();  \
-	return Result; \
-
-template <>
-FVector4 FKaleidoShaderDef::GetShaderParam<FVector4>(FName ParamName) const
+template <typename Type>
+Type FKaleidoShaderDef::GetShaderParam(FName ParamName) const
 {
-	GetShaderParamImpl(FVector4, GetVector4Value, ParamName)
-}
+	Type Result;
+	auto Predicate = [ParamName](const FKaleidoShaderParamEntry& Entry) { return Entry.ParamName == ParamName; };
 
-template <>
-FVector FKaleidoShaderDef::GetShaderParam<FVector>(FName ParamName) const
-{
-	GetShaderParamImpl(FVector, GetVector3Value, ParamName)
-}
+	if (const FKaleidoShaderParamEntry* Entry = Params.FindByPredicate(Predicate))
+	{
+		Result = Entry->GetValue<Type>();
+	}
 
-template <>
-float FKaleidoShaderDef::GetShaderParam<float>(FName ParamName) const
-{
-	GetShaderParamImpl(float, GetFloatValue, ParamName)
-}
-
-template <>
-int32 FKaleidoShaderDef::GetShaderParam<int32>(FName ParamName) const
-{
-	GetShaderParamImpl(int32, GetIntValue, ParamName)
-}
-
-template <>
-bool FKaleidoShaderDef::GetShaderParam<bool>(FName ParamName) const
-{
-	GetShaderParamImpl(bool, GetBoolValue, ParamName)
+	return Result;
 }
 
 AKaleidoInfluencer::AKaleidoInfluencer(const FObjectInitializer& Initializer) :

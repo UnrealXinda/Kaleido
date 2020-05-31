@@ -18,11 +18,14 @@ struct FKaleidoShaderParamEntry
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FVector4 Value;
 
-	FVector4 GetVector4Value() const { return Value; }
-	FVector  GetVector3Value() const { return FVector(Value); }
-	float    GetFloatValue() const   { return Value.X; }
-	int32    GetIntValue() const     { return StaticCast<int32>(Value.X); }
-	bool     GetBoolValue() const    { return Value.X != 0.0f; }
+	template <typename Type>
+	Type GetValue() const;
+	
+	template<> FVector4 GetValue<FVector4>() const { return Value; }
+	template<> FVector  GetValue<FVector>()  const { return FVector(Value); }
+	template<> float    GetValue<float>()    const { return Value.X; }
+	template<> int32    GetValue<int32>()    const { return StaticCast<int32>(Value.X); }
+	template<> bool     GetValue<bool>()     const { return Value.X != 0.0f; }
 };
 
 // Used to define shader parameters
